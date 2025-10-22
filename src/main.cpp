@@ -21,7 +21,7 @@ int main()
         float dt = GetFrameTime();
 
         // Update
-        monster.update(dt, world);
+        monster.update(dt, world, cam);
         cam.target = monster.getPosition();
 
         // Draw
@@ -32,7 +32,7 @@ int main()
         world.draw();
         monster.draw();
 
-                EndMode2D();
+        EndMode2D();
 
         EndDrawing();
     }

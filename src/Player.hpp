@@ -6,7 +6,7 @@ class Player
 {
 public:
     Player(Vector2 startPos);
-    void update(float dt, Tilemap &world);
+    void update(float dt, Tilemap &world, const Camera2D &cam);
     void draw() const;
     Vector2 getPosition() const { return pos; }
 
