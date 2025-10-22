@@ -7,13 +7,12 @@ int main()
     SetTargetFPS(60);
 
     Tilemap world;
-    world.loadExampleMap();
+    world.generateCave(43, 45, 5); // seed, fill%, smooth steps
 
-    Player monster({400, 400});
+    Player monster(world.pickSpawnFloorNearCenter());
 
     Camera2D cam{};
-    cam.target = monster.getPosition();
-    cam.offset = {400, 400};
+    cam.offset = {GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f};
     cam.zoom = 1.0f;
 
     while (!WindowShouldClose())
@@ -21,12 +20,12 @@ int main()
         float dt = GetFrameTime();
 
         // Update
-        monster.update(dt, world, cam);
         cam.target = monster.getPosition();
+        monster.update(dt, world, cam);
 
         // Draw
         BeginDrawing();
-        ClearBackground(DARKGREEN);
+        ClearBackground(Color{12, 30, 28, 255});
 
         BeginMode2D(cam);
         world.draw();

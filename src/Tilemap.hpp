@@ -1,5 +1,6 @@
 #pragma once
 #include <raylib.h>
+#include <vector>
 
 class Tilemap
 {
@@ -11,8 +12,20 @@ public:
     void loadExampleMap();
     void draw() const;
     bool isWall(int tx, int ty) const;
+
+    // collision
     void resolveCollision(Vector2 &pos, float radius, Vector2 delta);
+
+    // Cave generation
+    void generateCave(unsigned seed = 1337, int fillPercent = 45, int smoothSteps = 5);
+    Vector2 pickSpawnFloorNearCenter() const; // finds a spawnpoint in the cave
 
 private:
     int map[HEIGHT][WIDTH];
+
+    // Variables for cave generation
+    int countWallNeighbours(int x, int y) const;
+    void floodFillRegions(std::vector<int> &regionIdOut, int &regionCount) const;
+    void keepLargestRegionAndFillOthers();
+    void connectRegionsToMain();
 };
