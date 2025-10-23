@@ -323,3 +323,19 @@ Vector2 Tilemap::pickSpawnFloorNearCenter() const
     }
     return Vector2{(float)cx * TILE_SIZE, (float)cy * TILE_SIZE};
 }
+
+Vector2 Tilemap::randomFloorPosition() const
+{
+    for (int tries = 0; tries < 1024; ++tries)
+    {
+        int x = GetRandomValue(1, WIDTH - 2);
+        int y = GetRandomValue(1, HEIGHT - 2);
+        if (!isWall(x, y))
+        {
+            return Vector2{(x + 0.5f) * TILE_SIZE, (y + 0.5f) * TILE_SIZE};
+        }
+    }
+
+    // Fallbak to center
+    return Vector2{(WIDTH * 0.5f) * TILE_SIZE, (HEIGHT * 0.5f) * TILE_SIZE};
+}

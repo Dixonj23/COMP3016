@@ -20,6 +20,9 @@ public:
     void generateCave(unsigned seed = 1337, int fillPercent = 45, int smoothSteps = 5);
     Vector2 pickSpawnFloorNearCenter() const; // finds a spawnpoint in the cave
 
+    // Random points
+    Vector2 randomFloorPosition() const;
+
 private:
     int map[HEIGHT][WIDTH];
 
