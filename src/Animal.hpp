@@ -14,6 +14,8 @@ struct Animal
 
     float retargetTimer = 0.0f; // seconds until choosing new target
 
+    bool alive = true;
+
     void randomise(const Tilemap &world);
     void update(float dt, const Tilemap &world);
     void draw() const;
