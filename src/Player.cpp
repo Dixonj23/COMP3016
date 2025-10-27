@@ -11,6 +11,18 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam)
     if (biteFxTimer > 0.0f)
         biteFxTimer -= dt;
 
+    // Evolution input
+    if (!transforming && isEvolveReady() && IsKeyPressed(KEY_E))
+    {
+        transforming = true;
+        transformElapsed = 0.0f;
+    }
+
+    // Transforming state
+    if (transforming)
+    {
+    }
+
     // Getting mouse position in world space
     Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
     Vector2 forward = {mouseWorld.x - pos.x, mouseWorld.y - pos.y};
@@ -56,6 +68,9 @@ void Player::draw() const
         float half = (biteArcDeg * 0.5f) * (PI / 180.0f);
         float a0 = angle - half;
         float a1 = angle + half;
+
+        float lineThickness = 6.0f;
+
         for (int i = 0; i < segments; ++i)
         {
             float t0 = (float)i / segments;
@@ -64,7 +79,7 @@ void Player::draw() const
             float bb = a0 + (a1 - a0) * t1;
             Vector2 p0 = {pos.x + cosf(aa) * biteRange, pos.y + sinf(aa) * biteRange};
             Vector2 p1 = {pos.x + cosf(bb) * biteRange, pos.y + sinf(bb) * biteRange};
-            DrawLineEx(p0, p1, 2.0f, RED);
+            DrawLineEx(p0, p1, lineThickness, RED);
         }
     }
 }
