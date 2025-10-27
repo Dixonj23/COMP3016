@@ -35,8 +35,15 @@ public:
     int getStage() const { return stage; }
     int getFood() const { return food; }
 
+    // Evolution VFX functions
+    void applyStageVisuals();
+    float getRadius() const { return radius; }
+    Color getBodyColor() const { return bodyColor; }
+
 private:
     Vector2 pos;
+    float radius = 14.0f;
+    Color bodyColor = WHITE;
     float angle = 0.0f;
     const float speed = 180.0f;
 
@@ -54,6 +61,13 @@ private:
     // Evolution parameters
     int stage = 1;
     int evolveThresholds[2] = {5, 15};
+
+    float stageRadii[3] = {14.0f, 18.0f, 22.0f};
+    Color stageColours[3] = {
+        Color{230, 245, 255, 255}, // pale
+        Color{140, 220, 200, 255}, // teal
+        Color{255, 170, 110, 255}  // orange
+    };
 
     bool transforming = false;
     float transformTime = 1.5f;
