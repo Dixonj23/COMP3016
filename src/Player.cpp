@@ -6,13 +6,26 @@ Player::Player(Vector2 startPos) : pos(startPos)
     applyStageVisuals();
 }
 
-void Player::update(float dt, Tilemap &world, const Camera2D &cam)
+void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<Animal> &animals)
 {
-    // cooldowns
+    // cooldown timers
     if (biteTimer > 0.0f)
         biteTimer -= dt;
     if (biteFxTimer > 0.0f)
         biteFxTimer -= dt;
+    if (dashCDTimer > 0.0f)
+        dashCDTimer -= dt;
+
+    // Getting mouse position in world space
+    Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
+    Vector2 forward = {mouseWorld.x - pos.x, mouseWorld.y - pos.y};
+    float len = sqrt(forward.x * forward.x + forward.y * forward.y);
+    if (len > 0.0001f)
+    {
+        forward.x /= len;
+        forward.y /= len;
+    }
+    angle = atan2f(forward.y, forward.x); // making facing independent of collision
 
     // Evolution input
     if (!transforming && isEvolveReady() && IsKeyPressed(KEY_E))
@@ -24,16 +37,6 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam)
     // Transforming state
     if (transforming)
     {
-        Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
-        Vector2 fwd = {mouseWorld.x - pos.x, mouseWorld.y - pos.y};
-        float L = sqrt(fwd.x * fwd.x + fwd.y * fwd.y);
-        if (L > 1e-4f)
-        {
-            fwd.x /= L;
-            fwd.y /= L;
-        }
-        angle = atan2f(fwd.y, fwd.x);
-
         transformElapsed += dt;
         if (transformElapsed >= transformTime)
         {
@@ -56,18 +59,71 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam)
         return;
     }
 
-    // Getting mouse position in world space
-    Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
-    Vector2 forward = {mouseWorld.x - pos.x, mouseWorld.y - pos.y};
-    float len = sqrt(forward.x * forward.x + forward.y * forward.y);
-    if (len > 0.0001f)
+    // dash input
+    bool canDash = (stage >= 2) && (dashCDTimer <= 0.0f) && !dashing;
+    if (canDash && IsKeyPressed(KEY_LEFT_SHIFT))
     {
-        forward.x /= len;
-        forward.y /= len;
+        Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
+        dashDir = {mouseWorld.x - pos.x, mouseWorld.y - pos.y};
+        // find length of dashDir vector
+        float L = sqrt(dashDir.x * dashDir.x + dashDir.y * dashDir.y);
+        // if on player skip normalisation
+        if (L < 1e-4f)
+        {
+            dashDir = {cosf(angle), sinf(angle)};
+        }
+        else
+        {
+            dashDir.x /= L;
+            dashDir.y /= L;
+        }
+
+        // lock facing to dash direction
+        angle = atan2f(dashDir.y, dashDir.x);
+
+        dashing = true;
+        dashElapsed = 0.0f;
+        biteTimer = fmaxf(biteTimer, 0.0f);
     }
-    angle = atan2f(forward.y, forward.x); // making facing independent of collision
 
     // Movement
+    Vector2 delta{0, 0};
+
+    // dashing movement
+    if (dashing)
+    {
+        delta = {dashDir.x * dashSpeed * dt, dashDir.y * dashSpeed * dt};
+        world.resolveCollision(pos, radius, delta);
+
+        for (auto &a : animals)
+        {
+            if (!a.alive)
+                continue;
+            float dx = a.pos.x - pos.x, dy = a.pos.y - pos.y;
+            float rr = (radius + a.radius + dashKillPad);
+            // is monster overlaps animals during dash
+            if (dx * dx + dy * dy <= rr * rr)
+            {
+                a.alive = false;
+                food += 1;
+            }
+        }
+
+        dashElapsed += dt;
+        // starts cooldown when dash ends
+        if (dashElapsed >= dashDuration)
+        {
+            dashing = false;
+            dashCDTimer = dashCooldown;
+        }
+
+        // keep facing direction locked to dashDir
+        angle = atan2f(dashDir.y, dashDir.x);
+
+        // skip normal movement while dashing
+        return;
+    }
+
     Vector2 right = {-forward.y, forward.x};
     float f = (IsKeyDown(KEY_W) ? 1.0f : 0.0f) - (IsKeyDown(KEY_S) ? 1.0f : 0.0f);
     float r = (IsKeyDown(KEY_D) ? 1.0f : 0.0f) - (IsKeyDown(KEY_A) ? 1.0f : 0.0f);
@@ -80,7 +136,7 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam)
         move.y /= moveLen;
     }
 
-    Vector2 delta = {move.x * speed * dt, move.y * speed * dt};
+    delta = {move.x * speed * dt, move.y * speed * dt};
 
     // collision
     world.resolveCollision(pos, radius, delta);
@@ -102,6 +158,13 @@ void Player::draw() const
         // puilsing ring
         DrawCircleLines((int)pos.x, (int)pos.y, radius + 2.0f + 10.0f * t, Color{255, 220, 100, 255});
         DrawCircleV(pos, radius + 6.0f + 6.0f * t, Fade(YELLOW, 0.25f + 0.35f * t));
+    }
+
+    // dash FX
+    if (dashing)
+    {
+        Vector2 back = {pos.x - dashDir.x * (radius + 18.0f), pos.y - dashDir.y * (radius + 18.0f)};
+        DrawCircleV(back, radius * 0.7f, Fade(SKYBLUE, 0.5f));
     }
 
     // bite FX
@@ -138,7 +201,7 @@ int Player::tryBite(std::vector<Animal> &animals)
     if (!IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         return 0;
 
-    if (transforming)
+    if (dashing || transforming)
         return 0;
 
     if (biteTimer > 0.0f)

@@ -8,7 +8,7 @@ class Player
 {
 public:
     Player(Vector2 startPos);
-    void update(float dt, Tilemap &world, const Camera2D &cam);
+    void update(float dt, Tilemap &world, const Camera2D &cam, std::vector<Animal> &animals);
     void draw() const;
     Vector2 getPosition() const { return pos; }
 
@@ -39,6 +39,13 @@ public:
     void applyStageVisuals();
     float getRadius() const { return radius; }
     Color getBodyColor() const { return bodyColor; }
+
+    // stage 2 dash abuility
+    bool isDashing() const { return dashing; }
+    float getDashCooldownFraction() const
+    {
+        return (dashCDTimer > 0.0f) ? fminf(dashCDTimer / dashCooldown, 1.0f) : 0.0f;
+    }
 
 private:
     Vector2 pos;
@@ -72,4 +79,14 @@ private:
     bool transforming = false;
     float transformTime = 1.5f;
     float transformElapsed = 0.0f;
+
+    // stage 2 dash parameters
+    bool dashing = false;
+    Vector2 dashDir{1.0f, 0.0f};
+    float dashDuration = 0.5f;
+    float dashElapsed = 0.0f;
+    float dashCooldown = 5.0f;
+    float dashCDTimer = 0.0f;
+    float dashSpeed = 700.0f;
+    float dashKillPad = 4.0f;
 };

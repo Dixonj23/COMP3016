@@ -31,9 +31,9 @@ int main()
 
         // Update player
         cam.target = monster.getPosition();
-        monster.update(dt, world, cam);
+        monster.update(dt, world, cam, animals);
 
-        if (!monster.isTransforming())
+        if (!monster.isTransforming() && !monster.isDashing())
         {
             monster.tryBite(animals);
         }
@@ -68,20 +68,29 @@ int main()
         int hudX = 20;
         int hudY = 20;
 
+        // stage/food
         DrawText(TextFormat("Stage: %d", monster.getStage()), hudX, hudY, 22, WHITE);
         DrawText(TextFormat("Food: %d", monster.getFood()), hudX, hudY + 24, 20, WHITE);
 
-        float cdFrac = monster.getBiteCooldownFraction();
-
-        // cd bar outline
-        DrawRectangleLines(hudX - 2, hudY + 50 - 2, 104, 24, WHITE);
-
-        // fill cd bar
-        Color fill = (cdFrac > 0.0f) ? RED : GREEN;
-        int filledWidth = (int)(100 * (1.0f - cdFrac));
-        DrawRectangle(hudX, hudY + 50, filledWidth, 20, fill);
-
+        // bite cooldown bar
+        float biteFrac = monster.getBiteCooldownFraction();
+        DrawRectangleLines(hudX - 2, hudY + 50 - 2, 104, 24, WHITE); // bar outline
+        Color biteCol = (biteFrac > 0.0f) ? RED : GREEN;
+        int filledWidth = (int)(100 * (1.0f - biteFrac));
+        DrawRectangle(hudX, hudY + 50, filledWidth, 20, biteCol);
         DrawText("BITE", hudX + 110, hudY + 50, 20, WHITE);
+
+        // dash cooldown bar
+        if (monster.getStage() >= 2)
+        {
+            float dashFrac = monster.getDashCooldownFraction();
+            int dy = hudY + 50 + 30;
+            DrawRectangleLines(hudX - 2, dy - 2, 154, 24, WHITE);
+            Color dashCol = (dashFrac > 0.0f) ? SKYBLUE : BLUE;
+            int dashFill = (int(150 * (1.0f - dashFrac)));
+            DrawRectangle(hudX, hudY + 50 + 30 - 2, dashFill, 20, dashCol);
+            DrawText("DASH", hudX + 160, dy + 2, 20, WHITE);
+        }
 
         // Evolution prompt
         if (!monster.isTransforming() && monster.isEvolveReady())
