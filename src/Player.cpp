@@ -15,6 +15,12 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
         biteFxTimer -= dt;
     if (dashCDTimer > 0.0f)
         dashCDTimer -= dt;
+    if (showDashHint)
+    {
+        dashHintTimer -= dt;
+        if (dashHintTimer <= 0.0f)
+            showDashHint = false;
+    }
 
     // Getting mouse position in world space
     Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
@@ -54,6 +60,13 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
             stage = (stage < 3) ? stage + 1 : 3;
 
             applyStageVisuals();
+
+            // when reahing stage 2 reveal new ability
+            if (stage == 2)
+            {
+                showDashHint = true;
+                dashHintTimer = 4.0f;
+            }
         }
 
         return;

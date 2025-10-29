@@ -12,6 +12,10 @@ public:
     void draw() const;
     Vector2 getPosition() const { return pos; }
 
+    //  ability tutorial parameters
+    bool showDashHint = false;
+    float dashHintTimer = 0.0f;
+
     // function to bite, returns number of things consumed
     int tryBite(std::vector<Animal> &animals);
 

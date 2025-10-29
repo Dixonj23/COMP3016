@@ -92,6 +92,17 @@ int main()
             DrawText("DASH", hudX + 160, dy + 2, 20, WHITE);
         }
 
+        // dah hint prompt
+        if (monster.showDashHint)
+        {
+            float alpha = fminf(monster.dashHintTimer / 4.0f, 1.0f);
+            Color c = Fade(SKYBLUE, alpha);
+
+            const char *msg = "New Ability Unlocked! Press [SHIFT] to Dash";
+            int tw = MeasureText(msg, 28);
+            DrawText(msg, GetScreenWidth() / 2 - tw / 2, GetScreenHeight() - 100, 28, c);
+        }
+
         // Evolution prompt
         if (!monster.isTransforming() && monster.isEvolveReady())
         {
