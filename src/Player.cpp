@@ -21,6 +21,8 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
         if (dashHintTimer <= 0.0f)
             showDashHint = false;
     }
+    if (boulderCDTimer > 0.0f)
+        boulderCDTimer -= dt;
 
     // Getting mouse position in world space
     Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
@@ -97,6 +99,17 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
         dashing = true;
         dashElapsed = 0.0f;
         biteTimer = fmaxf(biteTimer, 0.0f);
+    }
+
+    // lock movement during boulder throw
+    if (boulderWinding)
+    {
+        boulderWindElapsed += dt;
+        if (boulderWindElapsed >= boulderWindTime)
+        {
+            boulderWinding = false;
+        }
+        return;
     }
 
     // Movement
@@ -204,6 +217,17 @@ void Player::draw() const
             DrawLineEx(p0, p1, lineThickness, RED);
         }
     }
+
+    // boulder throw FX
+    if (boulderWinding)
+    {
+        float t = boulderWindElapsed / boulderWindTime;
+        float pulse = 0.5f + 0.5f + sinf(GetTime() * 20.0f);
+        Color glow = Fade(BROWN, 0.03f + 0.04f * pulse);
+        float r = radius + 6.0f + 6.0f * t;
+        DrawCircleV(pos, r, glow);
+        DrawCircleLines((int)pos.x, (int)pos.y, r, BROWN);
+    }
 }
 
 static inline float dot(Vector2 a, Vector2 b) { return a.x * b.x + a.y * b.y; }
@@ -214,7 +238,7 @@ int Player::tryBite(std::vector<Animal> &animals)
     if (!IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         return 0;
 
-    if (dashing || transforming)
+    if (dashing || transforming || boulderWinding)
         return 0;
 
     if (biteTimer > 0.0f)
@@ -259,6 +283,56 @@ int Player::tryBite(std::vector<Animal> &animals)
     }
     return eaten;
 }
+
+bool Player::tryFireBoulder(std::vector<Boulder> &pool, const Camera2D &cam)
+{
+    if (stage < 3)
+        return false;
+    if (transforming || dashing)
+        return false;
+
+    if (!boulderWinding && boulderCDTimer <= 0.0f && IsMouseButtonPressed(MOUSE_RIGHT_BUTTON))
+    {
+        // direction
+        Vector2 mouseworld = GetScreenToWorld2D(GetMousePosition(), cam);
+        boulderDir = {mouseworld.x - pos.x, mouseworld.y - pos.y};
+        float L = sqrtf(boulderDir.x * boulderDir.x + boulderDir.y * boulderDir.y);
+        if (L < 1e-4f)
+            boulderDir = {cosf(angle), sinf(angle)};
+        else
+        {
+            boulderDir.x /= L;
+            boulderDir.y /= L;
+        }
+
+        boulderWinding = true;
+        boulderWindElapsed = 0.0f;
+        angle = atan2f(boulderDir.y, boulderDir.x);
+        return false; // nothing thrown yet
+    };
+
+    if (boulderWinding)
+    {
+        boulderWindElapsed += GetFrameTime();
+        if (boulderWindElapsed > -boulderWindTime)
+        {
+            // fire boulder
+            Boulder b;
+            // offset slightly to avoid player
+            b.pos = {pos.x + boulderDir.x * (radius + boulderRadius + 4.0f),
+                     pos.y + boulderDir.y * (radius + boulderRadius + 4.0f)};
+            b.vel = {boulderDir.x * boulderSpeed, boulderDir.y * boulderSpeed};
+            b.radius = boulderRadius;
+            pool.push_back(b);
+
+            boulderWinding = false;
+            boulderCDTimer = boulderCooldown;
+            return true; // boulder thrown
+        };
+    }
+
+    return false;
+};
 
 void Player::applyStageVisuals()
 {

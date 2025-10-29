@@ -3,6 +3,7 @@
 #include "Tilemap.hpp"
 #include "Animal.hpp"
 #include <cmath>
+#include "Boulder.hpp"
 
 class Player
 {
@@ -24,6 +25,13 @@ public:
         return (biteTimer > 0.0f)
                    ? fminf(biteTimer / biteCooldown, 1.0f)
                    : 0.0f;
+    }
+
+    // function to throw boulder, returnstrue if shot
+    bool tryFireBoulder(std::vector<Boulder> &pool, const Camera2D &cam);
+    float getBoulderCooldownFraction() const
+    {
+        return (boulderCDTimer > 0.0f) ? fminf(boulderCDTimer / boulderCooldown, 1.0f) : 0.0f;
     }
 
     // evolution functions
@@ -93,4 +101,16 @@ private:
     float dashCDTimer = 0.0f;
     float dashSpeed = 700.0f;
     float dashKillPad = 4.0f;
+
+    // stage 3 boulder parameters
+    float boulderCooldown = 8.0f;
+    float boulderCDTimer = 0.0f;
+    float boulderSpeed = 420.0f;
+    float boulderRadius = 16.0f;
+
+    // wind up
+    bool boulderWinding = false;
+    float boulderWindTime = 0.4f;
+    float boulderWindElapsed = 0.0f;
+    Vector2 boulderDir{};
 };

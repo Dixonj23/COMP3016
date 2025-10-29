@@ -1,8 +1,11 @@
 #include "Player.hpp"
 #include "Tilemap.hpp"
 #include "Animal.hpp"
+#include "Boulder.hpp"
 #include <vector>
 #include <algorithm>
+
+std::vector<Boulder> boulders;
 
 int main()
 {
@@ -33,11 +36,17 @@ int main()
         cam.target = monster.getPosition();
         monster.update(dt, world, cam, animals);
 
+        if (monster.tryFireBoulder(boulders, cam))
+        {
+            // screenshake for added oomph
+            cam.target.x += GetRandomValue(-8, 8);
+            cam.target.y += GetRandomValue(-8, 8);
+        }
+
         if (!monster.isTransforming() && !monster.isDashing())
         {
             monster.tryBite(animals);
         }
-
         int eatenThisClick = monster.tryBite(animals);
 
         // Update wildlife
@@ -52,6 +61,29 @@ int main()
                            { return !a.alive; }),
             animals.end());
 
+        // Update boulders
+        for (auto &b : boulders)
+        {
+            bool exploded = b.update(dt, world, animals);
+            if (exploded)
+            {
+                // kill aoe
+                float aoe = 64.0f;
+                for (auto &a : animals)
+                {
+                    if (!a.alive)
+                        continue;
+                    float dx = a.pos.x - b.pos.x, dy = a.pos.y - b.pos.y;
+                    if (dx * dx + dy * dy <= aoe * aoe)
+                        a.alive = false;
+                }
+            }
+        }
+        boulders.erase(std::remove_if(boulders.begin(), boulders.end(),
+                                      [](const Boulder &b)
+                                      { return !b.alive; }),
+                       boulders.end());
+
         // Draw EVERYTHING
         BeginDrawing();
         ClearBackground(Color{12, 30, 28, 255});
@@ -60,6 +92,8 @@ int main()
         world.draw();
         for (auto &a : animals)
             a.draw();
+        for (auto &b : boulders)
+            b.draw();
         monster.draw();
 
         EndMode2D();
@@ -92,7 +126,7 @@ int main()
             DrawText("DASH", hudX + 160, dy + 2, 20, WHITE);
         }
 
-        // dah hint prompt
+        // dash hint prompt
         if (monster.showDashHint)
         {
             float alpha = fminf(monster.dashHintTimer / 4.0f, 1.0f);
@@ -101,6 +135,16 @@ int main()
             const char *msg = "New Ability Unlocked! Press [SHIFT] to Dash";
             int tw = MeasureText(msg, 28);
             DrawText(msg, GetScreenWidth() / 2 - tw / 2, GetScreenHeight() - 100, 28, c);
+        }
+
+        // boulder cooldown bar
+        if (monster.getStage() >= 3)
+        {
+            float bFrac = monster.getBoulderCooldownFraction();
+            int dy = hudY + 110;
+            DrawRectangleLines(hudX - 2, dy - 2, 154, 24, WHITE);
+            DrawRectangle(hudX, dy, (int)(150 * (1.0f - bFrac)), 20, (bFrac > 0.0f) ? BROWN : Color{150, 90, 40, 255});
+            DrawText("BOULDER", hudX + 160, dy + 2, 20, WHITE);
         }
 
         // Evolution prompt
