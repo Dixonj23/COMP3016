@@ -76,6 +76,15 @@ int main()
             monster.tryBite(animals);
         }
 
+        Vector2 slamPos;
+        if (monster.consumeSlamImpact(slamPos))
+        {
+            impacts.push_back({slamPos, 0.25f, 0.0f});
+            shakeDuration = 0.14f;
+            shakeTime = shakeDuration;
+            shakeMagnitude = 8.0f;
+        }
+
         // Update wildlife
         for (auto &a : animals)
         {
@@ -193,6 +202,17 @@ int main()
             DrawRectangleLines(hudX - 2, dy - 2, 154, 24, WHITE);
             DrawRectangle(hudX, dy, (int)(150 * (1.0f - bFrac)), 20, (bFrac > 0.0f) ? BROWN : Color{150, 90, 40, 255});
             DrawText("BOULDER", hudX + 160, dy + 2, 20, WHITE);
+        }
+
+        // slam cooldown bar
+        if (monster.getStage() >= 4)
+        {
+            float sFrac = monster.getSlamCooldownFraction();
+            int sy = hudY + 140;
+            DrawRectangleLines(hudX - 2, sy - 2, 154, 24, WHITE);
+            Color sCol = (sFrac > 0.0f) ? RED : MAROON;
+            DrawRectangle(hudX, sy, (int)(150 * (1.0f - sFrac)), 20, sCol);
+            DrawText("SLAM", hudX + 160, sy + 2, 20, WHITE);
         }
 
         // Evolution prompt

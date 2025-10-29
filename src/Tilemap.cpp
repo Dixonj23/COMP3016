@@ -3,6 +3,7 @@
 #include <queue>
 #include <algorithm>
 #include <cmath>
+#include <raymath.h>
 
 void Tilemap::loadExampleMap()
 {
@@ -33,6 +34,11 @@ bool Tilemap::isWall(int tx, int ty) const
     if (tx < 0 || ty < 0 || tx >= WIDTH || ty >= HEIGHT)
         return true;
     return map[ty][tx] == 1;
+}
+
+bool Tilemap::isBorder(int tx, int ty) const
+{
+    return tx <= 0 || ty <= 0 || tx > WIDTH - 1 || ty >= HEIGHT - 1;
 }
 
 void Tilemap::draw() const
@@ -338,4 +344,38 @@ Vector2 Tilemap::randomFloorPosition() const
 
     // Fallbak to center
     return Vector2{(WIDTH * 0.5f) * TILE_SIZE, (HEIGHT * 0.5f) * TILE_SIZE};
+}
+
+// wall destruction
+void Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBorder)
+{
+    int minTx = (int)floorf((centerWorld.x - radiusPx) / TILE_SIZE);
+    int minTy = (int)floorf((centerWorld.y - radiusPx) / TILE_SIZE);
+    int maxTx = (int)floorf((centerWorld.x + radiusPx) / TILE_SIZE);
+    int maxTy = (int)floorf((centerWorld.y + radiusPx) / TILE_SIZE);
+
+    minTx = Clamp(minTx, 0, WIDTH - 1);
+    minTy = Clamp(minTy, 0, HEIGHT - 1);
+    maxTx = Clamp(maxTx, 0, WIDTH - 1);
+    maxTy = Clamp(maxTy, 0, HEIGHT - 1);
+
+    float r2 = radiusPx * radiusPx;
+
+    for (int ty = minTy; ty <= maxTy; ++ty)
+    {
+        for (int tx = minTx; tx <= maxTx; ++tx)
+        {
+            if (preserveBorder & isBorder(tx, ty))
+                continue;
+            // tile center in world
+            float cx = tx * (float)TILE_SIZE + TILE_SIZE * 0.5f;
+            float cy = ty * (float)TILE_SIZE + TILE_SIZE * 0.5f;
+            float dx = cx - centerWorld.x;
+            float dy = cy - centerWorld.y;
+            if (dx * dx + dy * dy <= r2)
+            {
+                map[ty][tx] = 0; // remove wall by making it a floor
+            }
+        }
+    }
 }

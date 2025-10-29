@@ -12,6 +12,7 @@ public:
     void loadExampleMap();
     void draw() const;
     bool isWall(int tx, int ty) const;
+    bool isBorder(int tx, int ty) const;
 
     // collision
     void resolveCollision(Vector2 &pos, float radius, Vector2 delta);
@@ -22,6 +23,9 @@ public:
 
     // Random points
     Vector2 randomFloorPosition() const;
+
+    // carve floor in a circular aread in world space
+    void carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBorder = true);
 
 private:
     int map[HEIGHT][WIDTH];

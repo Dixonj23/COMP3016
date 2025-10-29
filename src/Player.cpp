@@ -23,6 +23,8 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
     }
     if (boulderCDTimer > 0.0f)
         boulderCDTimer -= dt;
+    if (slamCDTimer > 0.0f)
+        slamCDTimer -= dt;
 
     // Getting mouse position in world space
     Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
@@ -52,14 +54,14 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
             transforming = false;
 
             // consume food for this stage
-            if (stage < 3)
+            if (stage < 4)
             {
                 food -= evolveThresholds[stage - 1];
                 if (food < 0)
                     food = 0;
             }
 
-            stage = (stage < 3) ? stage + 1 : 3;
+            stage = (stage < 4) ? stage + 1 : 4;
 
             applyStageVisuals();
 
@@ -110,6 +112,55 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
             boulderWinding = false;
         }
         return;
+    }
+
+    // slam input
+    if (stage >= 4)
+    {
+        if (!slamWinding && slamCDTimer <= 0.0f && !dashing && !boulderWinding && !transforming)
+        {
+            if (IsKeyPressed(KEY_Q))
+            {
+                slamWinding = true;
+                slamWindElapsed = 0.0f;
+            }
+        }
+        if (slamWinding)
+        {
+            slamWindElapsed += dt;
+            Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
+            Vector2 fw = {mouseWorld.x - pos.x, mouseWorld.y - pos.y};
+            float L = sqrtf(fw.x * fw.x + fw.y * fw.y);
+            if (L > 1e-4f)
+            {
+                fw.x /= L;
+                fw.y /= L;
+            }
+            angle = atan2f(fw.y, fw.x);
+
+            if (slamWindElapsed >= slamWindTime)
+            {
+                // slam time
+                slamWinding = false;
+                slamCDTimer = slamCooldown;
+                slamImpactPos = pos;
+                slamJustFired = true;
+
+                for (auto &a : animals)
+                {
+                    if (!a.alive)
+                        continue;
+                    float dx = a.pos.x - pos.x, dy = a.pos.y - pos.y;
+                    float rr = (slamRadius + a.radius + slamKillPad);
+                    if (dx * dx + dy * dy <= rr * rr)
+                        a.alive = false;
+                }
+
+                // break walls (except outer border)
+                world.carveCircle(pos, slamRadius, true);
+            }
+            return;
+        }
     }
 
     // Movement
@@ -228,6 +279,15 @@ void Player::draw() const
         DrawCircleV(pos, r, glow);
         DrawCircleLines((int)pos.x, (int)pos.y, r, BROWN);
     }
+
+    // slam charge FX
+    if (slamWinding)
+    {
+        float t = slamWindElapsed / slamWindTime;
+        float r = radius + t * (slamRadius - radius) * 0.25f;
+        DrawCircleV(pos, r, Fade(RED, 0.25f + 0.25f * sinf(GetTime() * 20.0f)));
+        DrawCircleLines((int)pos.x, (int)pos.y, r, RED);
+    }
 }
 
 static inline float dot(Vector2 a, Vector2 b) { return a.x * b.x + a.y * b.y; }
@@ -336,7 +396,7 @@ bool Player::tryFireBoulder(std::vector<Boulder> &pool, const Camera2D &cam)
 
 void Player::applyStageVisuals()
 {
-    int idx = (stage <= 1) ? 0 : (stage == 2 ? 1 : 2);
+    int idx = (stage <= 1) ? 0 : (stage == 2 ? 1 : (stage == 3 ? 2 : 3));
     radius = stageRadii[idx];
     bodyColor = stageColours[idx];
 
