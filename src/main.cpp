@@ -4,6 +4,16 @@
 #include "Boulder.hpp"
 #include <vector>
 #include <algorithm>
+#include <raymath.h>
+
+struct ImpactFX
+{
+    Vector2 pos;
+    float time = 0.2f;
+    float elapsed = 0.0f;
+};
+
+std::vector<ImpactFX> impacts;
 
 std::vector<Boulder> boulders;
 
@@ -25,7 +35,11 @@ int main()
         a.randomise(world);
 
     Camera2D cam{};
-    cam.offset = {GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f};
+    float shakeTime = 0.0f;
+    float shakeDuration = 0.0f;
+    float shakeMagnitude = 0.0f;
+    Vector2 baseOffset = {GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f};
+    cam.offset = baseOffset;
     cam.zoom = 1.0f;
 
     while (!WindowShouldClose())
@@ -36,18 +50,31 @@ int main()
         cam.target = monster.getPosition();
         monster.update(dt, world, cam, animals);
 
+        // Update camera shake
+        if (shakeTime > 0.0f)
+        {
+            shakeTime -= dt;
+            float t = (shakeDuration > 0.0f) ? (shakeTime / shakeDuration) : 0.0f;
+            float falloff = t * t;
+
+            float phase = GetTime();
+            float sx = sinf(phase * 35.0f);
+            float sy = cosf(phase * 29.0f);
+
+            float amp = shakeMagnitude * falloff;
+            cam.target.x += sx * amp;
+            cam.target.y += sy * amp;
+        }
+
         if (monster.tryFireBoulder(boulders, cam))
         {
-            // screenshake for added oomph
-            cam.target.x += GetRandomValue(-8, 8);
-            cam.target.y += GetRandomValue(-8, 8);
+            //
         }
 
         if (!monster.isTransforming() && !monster.isDashing())
         {
             monster.tryBite(animals);
         }
-        int eatenThisClick = monster.tryBite(animals);
 
         // Update wildlife
         for (auto &a : animals)
@@ -77,12 +104,24 @@ int main()
                     if (dx * dx + dy * dy <= aoe * aoe)
                         a.alive = false;
                 }
+
+                // boulder impact
+                impacts.push_back({b.pos, 0.2f, 0.0f});
+                shakeDuration = 0.15f;
+                shakeTime = shakeDuration;
+                shakeMagnitude = 6.0f;
             }
         }
         boulders.erase(std::remove_if(boulders.begin(), boulders.end(),
                                       [](const Boulder &b)
                                       { return !b.alive; }),
                        boulders.end());
+
+        // update impacts
+        for (auto &fx : impacts)
+        {
+            fx.elapsed += dt;
+        }
 
         // Draw EVERYTHING
         BeginDrawing();
@@ -95,6 +134,15 @@ int main()
         for (auto &b : boulders)
             b.draw();
         monster.draw();
+
+        for (auto &fx : impacts)
+        {
+            float t = fx.elapsed / fx.time;
+            float alpha = 1.0f - t;
+            float radius = 20.0f + 80.0f * t;
+            DrawCircleV(fx.pos, radius, Fade(ORANGE, alpha * 0.5f));
+            DrawCircleLines((int)fx.pos.x, (int)fx.pos.y, radius, Fade(RED, alpha));
+        }
 
         EndMode2D();
 
