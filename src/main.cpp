@@ -175,10 +175,41 @@ int main()
             float r = 60.0f + 120.0f * t;
             DrawCircleV(fx.pos, r, Fade(WHITE, a));
         }
+
+        // hunter lights
+        BeginMode2D(cam);
+        for (auto &h : hunters)
+        {
+            h.drawFOV();
+            // small circle light for clarity
+            float auraOuter = 70.0f;
+            float auraInner = 45.0f;
+
+            DrawCircleV(h.pos, auraInner, WHITE);
+            DrawCircleGradient((int)h.pos.x, (int)h.pos.y, auraOuter, WHITE, BLACK);
+
+            // cone light for hunter vision
+            float beamRange = 360.0f;
+            float halfFov = h.fovDeg * 0.5f;
+
+            float startDeg = h.facingRad * RAD2DEG - halfFov;
+            float endDeg = h.facingRad * RAD2DEG + halfFov;
+
+            const int LAYERS = 4;
+            for (int i = 0; i <= LAYERS; ++i)
+            {
+                float t = (float)i / (float)(LAYERS + 1);
+                float r = beamRange * (1.0f + 0.12f * t);
+                Color c = Fade(WHITE, 0.35f * (1.0f - t));
+                DrawCircleSector(h.pos, r, startDeg, endDeg, 40, c);
+            }
+        }
+
+        EndMode2D();
         EndMode2D();
         EndTextureMode();
 
-        // Draw EVERYTHING
+        // Draw world
         BeginDrawing();
         ClearBackground(Color{12, 30, 28, 255});
 
@@ -191,18 +222,6 @@ int main()
         for (auto &h : hunters)
             h.draw();
         monster.draw();
-
-        /* old impact FX (might still use)
-        for (auto &fx : impacts)
-        {
-            float t = fx.elapsed / fx.time;
-            float alpha = 1.0f - t;
-            float radius = 20.0f + 80.0f * t;
-            DrawCircleV(fx.pos, radius, Fade(ORANGE, alpha * 0.5f));
-            DrawCircleLines((int)fx.pos.x, (int)fx.pos.y, radius, Fade(RED, alpha));
-        }
-        */
-
         EndMode2D();
 
         // apply light mask after drawing world
@@ -295,7 +314,6 @@ int main()
 
         EndDrawing();
     }
-
     UnloadRenderTexture(lightRT);
     CloseWindow();
     return 0;

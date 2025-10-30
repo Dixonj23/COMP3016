@@ -19,7 +19,9 @@ public:
     float speed = 120.0f;
 
     // sensing
+    float fovDeg = 70.0f;
     float sightRange = 520.0f;
+    float facingRad = 0.0f;
     float loseSightTime = 1.0f;
     float memory = 0.0f;
     Vector2 lastSeen{};
@@ -39,6 +41,7 @@ public:
     void spawnAt(const Tilemap &world, Vector2 p);
     void update(float dt, const Tilemap &world, const Player &player);
     void draw() const;
+    void drawFOV() const;
 
 private:
     void requestPathTo(const Tilemap &world, Vector2 goal);

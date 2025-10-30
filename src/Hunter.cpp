@@ -7,6 +7,7 @@ static Vector2 norm(Vector2 v)
     float L = len(v);
     return (L > 1e-4) ? Vector2{v.x / L, v.y / L} : Vector2{0, 0};
 }
+static float dot(Vector2 a, Vector2 b) { return a.x * b.x + a.y * b.y; }
 
 void Hunter::spawnAt(const Tilemap &world, Vector2 p)
 {
@@ -47,6 +48,7 @@ void Hunter::followPath(const Tilemap &world, float dt)
         return;
     }
     Vector2 dir = {to.x / d, to.y / d};
+    facingRad = atan2f(dir.y, dir.x);
     Vector2 delta = {dir.x * speed * dt, dir.y * speed * dt};
     world.resolveCollision(pos, radius, delta);
 }
@@ -61,7 +63,15 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player)
     bool seePlayer = false;
     if (dist <= sightRange)
     {
-        seePlayer = world.hasLineOfSight(pos, pp);
+        Vector2 fwd = {cosf(facingRad), sinf(facingRad)};
+        Vector2 dirToP = (dist > 1e-4f) ? Vector2{toP.x / dist, toP.y / dist} : Vector2{0, 0};
+        float cosHalf = cosf((fovDeg * 0.5f) * (PI / 180.0f));
+        float facing = dot(fwd, dirToP);
+        if (facing >= cosHalf)
+        {
+            if (world.hasLineOfSight(pos, pp))
+                seePlayer = true;
+        }
     }
 
     if (seePlayer)
@@ -149,4 +159,20 @@ void Hunter::draw() const
     }
     // sight ring (debug)
     DrawCircleLines((int)pos.x, (int)pos.y, sightRange, Fade(WHITE, 0.15f));
+}
+
+void Hunter::drawFOV() const
+{
+    // draw a translucent sector centered at pos, oriented by facingRad
+    float half = (fovDeg * 0.5f);
+    float startDeg = (facingRad * RAD2DEG) - half;
+    float endDeg = (facingRad * RAD2DEG) + half;
+
+    // pick color by state so player can “read” hunter
+    Color c = (state == State::Chase)    ? Color{255, 60, 60, 90}
+              : (state == State::Search) ? Color{255, 160, 60, 70}
+                                         : Color{60, 160, 255, 60};
+
+    // Soft fill + outline so it’s visible
+    DrawCircleSector(pos, sightRange, startDeg, endDeg, 36, c);
 }
