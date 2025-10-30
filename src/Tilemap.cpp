@@ -467,7 +467,8 @@ bool Tilemap::findPath(Vector2 startWorld, Vector2 goalWorld, std::vector<Vector
     parent[sy][sx] = {sx, sy, 0, Hcost(sx, sy), -1, -1};
     push(sx, sy, parent[sy][sx].f);
 
-    const int DIR[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    const int DIR8[8][2] = {
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
 
     // pathfinding loop
     while (!heap.empty())
@@ -495,9 +496,9 @@ bool Tilemap::findPath(Vector2 startWorld, Vector2 goalWorld, std::vector<Vector
         }
 
         // explore neighbours in four directions
-        for (auto &d : DIR)
+        for (int i = 0; i < 8; ++i)
         {
-            int nx = x + d[0], ny = y + d[1];
+            int nx = x + DIR8[i][0], ny = y + DIR8[i][1];
 
             // skip out of bounds
             if (nx < 0 || ny < 0 || nx >= W || ny >= H)
@@ -505,12 +506,25 @@ bool Tilemap::findPath(Vector2 startWorld, Vector2 goalWorld, std::vector<Vector
             // skip walls
             if (isWall(nx, ny))
                 continue;
+
+            bool diagonal = (DIR8[i][0] != 0 && DIR8[i][1] != 0);
+            if (diagonal)
+            {
+                int bx = x + DIR8[i][0];
+                int by = y;
+                int cx = x;
+                int cy = y + DIR8[i][1];
+                if (isWall(bx, by) || isWall(cx, cy))
+                    continue;
+            }
+
             // skip closed tiles
             if (closedFlag[ny][nx] == stamp)
                 continue;
 
             // cost to move to neighbour
-            int g = parent[y][x].g + 10;
+            int stepCost = diagonal ? 14 : 10;
+            int g = parent[y][x].g + stepCost;
 
             // update if neighbours not open or cheaper path found
             if (openFlag[ny][nx] != stamp || g < parent[ny][nx].g)
