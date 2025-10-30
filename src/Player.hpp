@@ -17,6 +17,29 @@ public:
     bool showDashHint = false;
     float dashHintTimer = 0.0f;
 
+    // vision
+    float getVisionRadius() const
+    {
+        switch (stage)
+        {
+        case 1:
+            return 180.0f;
+        case 2:
+            return 230.0f;
+        case 3:
+            return 280.0f;
+        case 4:
+            return 340.0f;
+        default:
+            return 200.0f;
+        }
+    }
+
+    float getInnerLightRadius() const
+    {
+        return getVisionRadius() * 0.55f;
+    }
+
     // stage 1 bite function, returns number of things consumed
     int tryBite(std::vector<Animal> &animals);
 

@@ -279,16 +279,20 @@ void Tilemap::connectRegionsToMain()
         int dy = (w % 3 == 0) ? 1 : -1;
         int steps = 120;
 
+        (void)dx;
+        (void)dy;
+
         while (steps--)
         {
             if (x <= 1 || y <= 1 || x >= WIDTH - 2 || y >= HEIGHT - 2)
                 break;
+
             map[y][x] = 0; // carve passages
 
             // widen passages and add irregularity
-            if (turn(rng) < 40)
+            if (turn(rng) < 40 && x + 1 < WIDTH - 1)
                 map[y][x + 1] = 0;
-            if (turn(rng) < 40)
+            if (turn(rng) < 40 && x - 1 > 0)
                 map[y][x - 1] = 0;
 
             // add random turns

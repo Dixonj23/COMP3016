@@ -22,6 +22,13 @@ int main()
     InitWindow(1200, 800, "Emerge");
     SetTargetFPS(60);
 
+    // lighting
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+
+    RenderTexture2D lightRT = LoadRenderTexture(screenW, screenH);
+    SetTextureFilter(lightRT.texture, TEXTURE_FILTER_BILINEAR);
+
     Tilemap world;
     world.generateCave(43, 45, 5); // seed, fill%, smooth steps
 
@@ -132,6 +139,27 @@ int main()
             fx.elapsed += dt;
         }
 
+        // light mask
+        BeginTextureMode(lightRT);
+        ClearBackground(BLACK);
+
+        BeginMode2D(cam);
+        // player light circle
+        Vector2 p = monster.getPosition();
+        float outerR = monster.getVisionRadius();
+        float innerR = monster.getInnerLightRadius();
+        DrawCircleV(p, innerR, WHITE);
+        DrawCircleGradient((int)p.x, (int)p.y, outerR, WHITE, BLACK);
+        for (auto &fx : impacts)
+        {
+            float t = fx.elapsed / fx.time;
+            float a = 1.0f - t;
+            float r = 60.0f + 120.0f * t;
+            DrawCircleV(fx.pos, r, Fade(WHITE, a));
+        }
+        EndMode2D();
+        EndTextureMode();
+
         // Draw EVERYTHING
         BeginDrawing();
         ClearBackground(Color{12, 30, 28, 255});
@@ -144,6 +172,7 @@ int main()
             b.draw();
         monster.draw();
 
+        /* old impact FX (might still use)
         for (auto &fx : impacts)
         {
             float t = fx.elapsed / fx.time;
@@ -152,8 +181,16 @@ int main()
             DrawCircleV(fx.pos, radius, Fade(ORANGE, alpha * 0.5f));
             DrawCircleLines((int)fx.pos.x, (int)fx.pos.y, radius, Fade(RED, alpha));
         }
+        */
 
         EndMode2D();
+
+        // apply light mask after drawing world
+        BeginBlendMode(BLEND_MULTIPLIED);
+        Rectangle src = {0, 0, (float)lightRT.texture.width, -(float)lightRT.texture.height};
+        Rectangle dst = {0, 0, (float)screenW, (float)screenH};
+        DrawTexturePro(lightRT.texture, src, dst, {0, 0}, 0.0f, WHITE);
+        EndBlendMode();
 
         // HUD
         int hudX = 20;
@@ -239,6 +276,7 @@ int main()
         EndDrawing();
     }
 
+    UnloadRenderTexture(lightRT);
     CloseWindow();
     return 0;
 }
