@@ -67,7 +67,7 @@ void Tilemap::draw() const
 }
 
 // basic collision function
-void Tilemap::resolveCollision(Vector2 &pos, float radius, Vector2 delta)
+void Tilemap::resolveCollision(Vector2 &pos, float radius, Vector2 delta) const
 {
     Vector2 next = {pos.x + delta.x, pos.y + delta.y};
     int tx = (int)(next.x / TILE_SIZE), ty = (int)(next.y / TILE_SIZE);

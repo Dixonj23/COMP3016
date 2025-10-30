@@ -15,7 +15,7 @@ public:
     bool isBorder(int tx, int ty) const;
 
     // collision
-    void resolveCollision(Vector2 &pos, float radius, Vector2 delta);
+    void resolveCollision(Vector2 &pos, float radius, Vector2 delta) const;
 
     // Cave generation
     void generateCave(unsigned seed = 1337, int fillPercent = 45, int smoothSteps = 5);

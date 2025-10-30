@@ -2,6 +2,7 @@
 #include "Tilemap.hpp"
 #include "Animal.hpp"
 #include "Boulder.hpp"
+#include "Hunter.hpp"
 #include <vector>
 #include <algorithm>
 #include <raymath.h>
@@ -16,6 +17,8 @@ struct ImpactFX
 std::vector<ImpactFX> impacts;
 
 std::vector<Boulder> boulders;
+
+std::vector<Hunter> hunters;
 
 int main()
 {
@@ -40,6 +43,15 @@ int main()
     animals.resize(NUM_NIMALS);
     for (auto &a : animals)
         a.randomise(world);
+
+    // spawn 2 hunters
+    for (int i = 0; i < 2; i++)
+    {
+        Vector2 hpos = world.randomFloorPosition();
+        Hunter h;
+        h.spawnAt(world, hpos);
+        hunters.push_back(h);
+    }
 
     Camera2D cam{};
     float shakeTime = 0.0f;
@@ -90,6 +102,12 @@ int main()
             shakeDuration = 0.14f;
             shakeTime = shakeDuration;
             shakeMagnitude = 8.0f;
+        }
+
+        // update hunters
+        for (auto &h : hunters)
+        {
+            h.update(dt, world, monster);
         }
 
         // Update wildlife
@@ -170,6 +188,8 @@ int main()
             a.draw();
         for (auto &b : boulders)
             b.draw();
+        for (auto &h : hunters)
+            h.draw();
         monster.draw();
 
         /* old impact FX (might still use)
