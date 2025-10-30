@@ -4,6 +4,12 @@
 #include "Tilemap.hpp"
 #include "Player.hpp" //for position
 
+struct SquadIntel
+{
+    Vector2 spot{0, 0};
+    float timeToLive = 0.0f;
+};
+
 class Hunter
 {
 public:
@@ -23,7 +29,7 @@ public:
     float fovDeg = 70.0f;
     float sightRange = 520.0f;
     float facingRad = 0.0f;
-    float loseSightTime = 1.0f;
+    float loseSightTime = 2.0f;
     float memory = 0.0f;
     Vector2 lastSeen{};
 
@@ -40,7 +46,7 @@ public:
     float retargetTimer = 0.0f;
 
     void spawnAt(const Tilemap &world, Vector2 p);
-    void update(float dt, const Tilemap &world, const Player &player);
+    void update(float dt, const Tilemap &world, const Player &player, SquadIntel &intel);
     void draw() const;
     void drawFOV() const;
 

@@ -75,7 +75,7 @@ void Hunter::followPath(const Tilemap &world, float dt)
     world.resolveCollision(pos, radius, delta);
 }
 
-void Hunter::update(float dt, const Tilemap &world, const Player &player)
+void Hunter::update(float dt, const Tilemap &world, const Player &player, SquadIntel &intel)
 {
     // sensing
     Vector2 pp = player.getPosition();
@@ -89,10 +89,9 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player)
         Vector2 dirToP = (dist > 1e-4f) ? Vector2{toP.x / dist, toP.y / dist} : Vector2{0, 0};
         float cosHalf = cosf((fovDeg * 0.5f) * (PI / 180.0f));
         float facing = dot(fwd, dirToP);
-        if (facing >= cosHalf)
+        if (facing >= cosHalf && world.hasLineOfSight(pos, pp))
         {
-            if (world.hasLineOfSight(pos, pp))
-                seePlayer = true;
+            seePlayer = true;
         }
     }
 
@@ -100,6 +99,10 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player)
     {
         lastSeen = pp;
         memory = loseSightTime;
+        // update squad intel
+        intel.spot = pp;
+        intel.timeToLive = 2.5f; // squad will converge here for 2.5s
+
         if (state != State::Chase)
         {
             state = State::Chase;
@@ -108,16 +111,26 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player)
     }
     else
     {
-        if (memory > 0.0f)
+        // move to intel if player notin sight
+        if (intel.timeToLive > 0.0f)
         {
-            memory -= dt;
+            if (state == State::Patrol)
+            {
+                state = State::Search;
+                requestPathTo(world, intel.spot);
+            }
         }
         else
         {
-            if (state == State::Chase)
+            // if no intel fall back to own memory or patrol
+            if (memory > 0.0f)
             {
-                state = State::Search;
-                requestPathTo(world, lastSeen);
+                memory -= dt;
+            }
+            else if (state == State::Chase || state == State::Search)
+            {
+                state = State::Patrol;
+                retargetTimer = 0.0f;
             }
         }
     }
@@ -127,9 +140,13 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player)
     if (repathTimer <= 0.0f)
     {
         repathTimer = repathInterval;
-        if (state == State::Chase && seePlayer)
+        if (seePlayer)
         {
             requestPathTo(world, pp);
+        }
+        else if (intel.timeToLive > 0.0f)
+        {
+            requestPathTo(world, intel.spot);
         }
         else if (state == State::Search)
         {
@@ -160,8 +177,8 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player)
         // if reached lastSeen, fall back to patrolling after a short wait
         if (pathIndex >= (int)path.size())
         {
-            retargetTimer = 0.0f;
             state = State::Patrol;
+            retargetTimer = 0.0f;
         }
         break;
     }

@@ -20,6 +20,8 @@ std::vector<Boulder> boulders;
 
 std::vector<Hunter> hunters;
 
+SquadIntel squadIntel;
+
 int main()
 {
     InitWindow(1200, 800, "Emerge");
@@ -45,7 +47,7 @@ int main()
         a.randomise(world);
 
     // spawn 2 hunters
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 4; i++)
     {
         Vector2 hpos = world.randomFloorPosition();
         Hunter h;
@@ -104,10 +106,18 @@ int main()
             shakeMagnitude = 8.0f;
         }
 
+        // decay the shared intel
+        if (squadIntel.timeToLive > 0.0f)
+        {
+            squadIntel.timeToLive -= dt;
+            if (squadIntel.timeToLive < 0.0f)
+                squadIntel.timeToLive = 0.0f;
+        }
+
         // update hunters
         for (auto &h : hunters)
         {
-            h.update(dt, world, monster);
+            h.update(dt, world, monster, squadIntel);
         }
 
         // Update wildlife
