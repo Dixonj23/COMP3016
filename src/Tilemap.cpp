@@ -383,3 +383,144 @@ void Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBord
         }
     }
 }
+
+// line of sight
+bool Tilemap::hasLineOfSight(Vector2 a, Vector2 b) const
+{
+    // fancy line drawing code, named after someone but cant remember who
+    int x0, y0, x1, y1;
+    worldToTile(a, x0, y0);
+    worldToTile(b, x1, y1);
+    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
+    while (true)
+    {
+        if (isWall(x0, y0))
+            return false;
+        if (x0 == x1 && y0 == y1)
+            break;
+        int e2 = 2 * err;
+        if (e2 >= dy)
+        {
+            err += dy;
+            x0 += sx;
+        }
+        if (e2 <= dx)
+        {
+            err += dx;
+            y0 += sy;
+        }
+    }
+    return true;
+}
+
+// pathfinding
+bool Tilemap::findPath(Vector2 startWorld, Vector2 goalWorld, std::vector<Vector2> &outPath) const
+{
+    // simple grid pathfinding using map tiles
+
+    struct Node
+    {
+        int x, y;   // tile position
+        int g, f;   // cost so far and total cost estimate
+        int px, py; // parent coordinates
+    };
+
+    // convert world coordinates to tile grid coordinates
+    int sx, sy, gx, gy;
+    worldToTile(startWorld, sx, sy);
+    worldToTile(goalWorld, gx, gy);
+    // dont path to a wall (obviously)
+    if (isWall(gx, gy))
+        return false;
+
+    const int W = WIDTH, H = HEIGHT;
+
+    // static caches to avoid large arrays each frame
+    static int openFlag[HEIGHT][WIDTH];
+    static int closedFlag[HEIGHT][WIDTH];
+    static Node parent[HEIGHT][WIDTH];
+    static int stamp = 1;
+    stamp++;
+
+    // gotta love heuristic costs (sarcasm)
+    auto Hcost = [&](int x, int y)
+    { return 10 * (abs(x - gx) + abs(y - gy)); };
+
+    // priority queue using a vector
+    struct Q
+    {
+        int x, y, f;
+    };
+    std::vector<Q> heap;
+
+    // push helper to maintain order
+    auto push = [&](int x, int y, int f)
+    {heap.push_back({x,y,f}); std::push_heap(heap.begin(), heap.end(), [](const Q&a, const Q&b){return a.f>b.f;}); };
+
+    // pop helper to return node with the smallest f (total cost so far)
+    auto pop = [&]()
+    { std::pop_heap(heap.begin(), heap.end(), [](const Q&a, const Q&b){return a.f>b.f;}); Q q=heap.back(); heap.pop_back(); return q; };
+
+    openFlag[sy][sx] = stamp;
+    parent[sy][sx] = {sx, sy, 0, Hcost(sx, sy), -1, -1};
+    push(sx, sy, parent[sy][sx].f);
+
+    const int DIR[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+    // pathfinding loop
+    while (!heap.empty())
+    {
+        Q cur = pop(); // node with lowest f
+        int x = cur.x, y = cur.y;
+        if (closedFlag[y][x] == stamp)
+            continue;
+        closedFlag[y][x] = stamp; // mark as visited
+
+        // goal check
+        if (x == gx && y == gy)
+        {
+            // rebuild path by backtracking
+            outPath.clear();
+            while (!(x == sx && y == sy))
+            {
+                outPath.push_back(tileToWorldCenter(x, y));
+                Node p = parent[y][x];
+                x = p.px;
+                y = p.py;
+            }
+            std::reverse(outPath.begin(), outPath.end());
+            return true; // success
+        }
+
+        // explore neighbours in four directions
+        for (auto &d : DIR)
+        {
+            int nx = x + d[0], ny = y + d[1];
+
+            // skip out of bounds
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H)
+                continue;
+            // skip walls
+            if (isWall(nx, ny))
+                continue;
+            // skip closed tiles
+            if (closedFlag[ny][nx] == stamp)
+                continue;
+
+            // cost to move to neighbour
+            int g = parent[y][x].g + 10;
+
+            // update if neighbours not open or cheaper path found
+            if (openFlag[ny][nx] != stamp || g < parent[ny][nx].g)
+            {
+                parent[ny][nx] = {nx, ny, g, g + Hcost(nx, ny), x, y};
+                openFlag[ny][nx] = stamp;
+                push(nx, ny, parent[ny][nx].f);
+            }
+        }
+    }
+    // edge case, no path is found
+    return false;
+}
