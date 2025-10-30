@@ -8,6 +8,23 @@ static Vector2 norm(Vector2 v)
     return (L > 1e-4) ? Vector2{v.x / L, v.y / L} : Vector2{0, 0};
 }
 static float dot(Vector2 a, Vector2 b) { return a.x * b.x + a.y * b.y; }
+static float wrapPi(float a)
+{
+    while (a <= -PI)
+        a += 2 * PI;
+    while (a > PI)
+        a -= 2 * PI;
+    return a;
+}
+static float rotateTowards(float current, float target, float maxStep)
+{
+    float d = wrapPi(target - current);
+    if (d > maxStep)
+        d = maxStep;
+    if (d < -maxStep)
+        d = -maxStep;
+    return wrapPi(current + d);
+}
 
 void Hunter::spawnAt(const Tilemap &world, Vector2 p)
 {
@@ -48,7 +65,12 @@ void Hunter::followPath(const Tilemap &world, float dt)
         return;
     }
     Vector2 dir = {to.x / d, to.y / d};
-    facingRad = atan2f(dir.y, dir.x);
+
+    // smooth rotation towards path
+    float targetAng = atan2f(dir.y, dir.x);
+    float maxStep = turnRate * dt;
+    facingRad = rotateTowards(facingRad, targetAng, maxStep);
+
     Vector2 delta = {dir.x * speed * dt, dir.y * speed * dt};
     world.resolveCollision(pos, radius, delta);
 }
@@ -157,8 +179,6 @@ void Hunter::draw() const
         Vector2 eye = {pos.x + d.x * (radius * 0.6f), pos.y + d.y * (radius * 0.6f)};
         DrawCircleV(eye, 3.0f, BLACK);
     }
-    // sight ring (debug)
-    DrawCircleLines((int)pos.x, (int)pos.y, sightRange, Fade(WHITE, 0.15f));
 }
 
 void Hunter::drawFOV() const

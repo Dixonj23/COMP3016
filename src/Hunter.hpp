@@ -17,6 +17,7 @@ public:
     Vector2 pos{};
     float radius = 12.0f;
     float speed = 120.0f;
+    float turnRate = 6.0f;
 
     // sensing
     float fovDeg = 70.0f;
