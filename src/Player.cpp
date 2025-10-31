@@ -164,7 +164,7 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
                     float rr = (slamRadius + h.radius + slamKillPad);
                     if (dx * dx + dy * dy <= rr * rr)
                     {
-                        h.takeDamage(slamDamage());
+                        h.applyHit(slamDamage(), pos, 300.0f);
                     }
                 }
 
@@ -204,7 +204,7 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
             float rr = (radius + h.radius + dashKillPad);
             if (dx * dx + dy * dy <= rr * rr)
             {
-                h.takeDamage(dashDamage());
+                h.applyHit(dashDamage(), pos, 240.0f);
             }
         }
 
@@ -366,7 +366,7 @@ int Player::tryBite(std::vector<Animal> &animals, std::vector<Hunter> &hunters)
         float cosHalfArc = cosf((biteArcDeg * 0.5f) * (PI / 180.0f));
         if (fwd.x * n.x + fwd.y * n.y >= cosHalfArc)
         {
-            h.takeDamage(biteDamage());
+            h.applyHit(biteDamage(), /*sourcePos=*/pos, /*impulse=*/180.0f);
         }
     }
 

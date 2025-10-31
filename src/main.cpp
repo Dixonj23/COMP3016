@@ -212,6 +212,16 @@ int main()
                         a.alive = false;
                 }
 
+                for (auto &h : hunters)
+                {
+                    float dx = h.pos.x - b.pos.x, dy = h.pos.y - b.pos.y;
+                    float rr = (b.radius + h.radius);
+                    if (dx * dx + dy * dy <= rr * rr)
+                    {
+                        h.applyHit(monster.boulderAoeDamage(), b.pos, 180.0f);
+                    }
+                }
+
                 // boulder impact
                 impacts.push_back({b.pos, 0.2f, 0.0f});
                 shakeDuration = 0.15f;
@@ -276,15 +286,6 @@ int main()
                 Color c = Fade(WHITE, 0.35f * (1.0f - t));
                 DrawCircleSector(h.pos, r, startDeg, endDeg, 40, c);
             }
-
-            // hunter healthbars
-            if (!h.isAlive())
-                continue;
-            float f = h.hp / h.maxHp;
-            int w = 24, t = 4;
-            Vector2 top{h.pos.x - w * 0.5f, h.pos.y - h.radius - 10.0f};
-            DrawRectangleLines((int)top.x - 1, (int)top.y - 1, w + 2, t + 2, BLACK);
-            DrawRectangle((int)top.x, (int)top.y, (int)(w * f), t, (f > 0.3f) ? SKYBLUE : ORANGE);
         }
 
         EndMode2D();

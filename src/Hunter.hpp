@@ -24,7 +24,6 @@ public:
     Vector2 pos{};
     float radius = 12.0f;
     float speed = 120.0f;
-    float turnRate = 6.0f;
 
     // Health
     float maxHp = 120.0f;
@@ -36,6 +35,14 @@ public:
         if (hp < 0.0f)
             hp = 0.0f;
     }
+
+    // hit reaction
+    float hitFlashTimer = 0.0f;
+    float hitStunTimer = 0.0f;
+    Vector2 knockVel = {0, 0};
+    float knockFriction = 12.0f;
+
+    void applyHit(float dmg, Vector2 sourcePos, float impulse);
 
     // rifle
     float shootRange = 560.0f;
@@ -72,10 +79,18 @@ public:
     float patrolRadius = 220.0f;
     float retargetTimer = 0.0f;
 
+    // ranged behaviour
+    float preferredRange = 380.0f;
+    float minRange = 220.0f;
+    float maxChaseRange = 700.0f;
+    float strafeSpeed = 90.0f;
+    float turnRate = 6.0f;
+
     void spawnAt(const Tilemap &world, Vector2 p);
     void update(float dt, const Tilemap &world, const Player &player, SquadIntel &intel);
     void draw() const;
     void drawFOV() const;
+    void drawHealthbar() const;
 
 private:
     void requestPathTo(const Tilemap &world, Vector2 goal);

@@ -9,7 +9,6 @@ static Vector2 norm(Vector2 v)
     float L = len(v);
     return (L > 1e-4) ? Vector2{v.x / L, v.y / L} : Vector2{0, 0};
 }
-static float dot(Vector2 a, Vector2 b) { return a.x * b.x + a.y * b.y; }
 static float wrapPi(float a)
 {
     while (a <= -PI)
@@ -79,65 +78,110 @@ void Hunter::followPath(const Tilemap &world, float dt)
 
 void Hunter::update(float dt, const Tilemap &world, const Player &player, SquadIntel &intel)
 {
+    // timers
+    if (hitFlashTimer > 0.0f)
+        hitFlashTimer -= dt;
+    if (hitStunTimer > 0.0f)
+        hitStunTimer -= dt;
+    if (memory > 0.0f)
+        memory -= dt;
+
     // sensing
     Vector2 pp = player.getPosition();
     Vector2 toP = {pp.x - pos.x, pp.y - pos.y};
-    float dist = len(toP);
+    float distP = sqrtf(toP.x * toP.x + toP.y * toP.y);
+    Vector2 dirToP = (distP > 1e-4f) ? Vector2{toP.x / distP, toP.y / distP} : Vector2{0, 0};
 
-    bool seePlayer = false;
-    if (dist <= sightRange)
-    {
-        Vector2 fwd = {cosf(facingRad), sinf(facingRad)};
-        Vector2 dirToP = (dist > 1e-4f) ? Vector2{toP.x / dist, toP.y / dist} : Vector2{0, 0};
-        float cosHalf = cosf((fovDeg * 0.5f) * (PI / 180.0f));
-        float facing = dot(fwd, dirToP);
-        if (facing >= cosHalf && world.hasLineOfSight(pos, pp))
-        {
-            seePlayer = true;
-        }
-    }
+    Vector2 fwd = {cosf(facingRad), sinf(facingRad)};
+    float cosHalf = cosf((fovDeg * 0.5f) * (PI / 180.0f));
 
+    bool inCone = (distP <= sightRange) && (fwd.x * dirToP.x + fwd.y * dirToP.y >= cosHalf);
+    bool seePlayer = inCone && world.hasLineOfSight(pos, pp);
+
+    // share squad intel
     if (seePlayer)
     {
         lastSeen = pp;
         memory = loseSightTime;
-        // update squad intel
         intel.spot = pp;
-        intel.timeToLive = 2.5f; // squad will converge here for 2.5s
+        intel.timeToLive = 2.5f;
+    }
 
+    // What do we currently "know"?
+    bool hasSharedIntel = (intel.timeToLive > 0.0f);
+    bool hasPersonalIntel = (!seePlayer && memory > 0.0f);
+    bool knowsTarget = seePlayer || hasSharedIntel || hasPersonalIntel;
+
+    Vector2 trackPos{};
+    if (seePlayer)
+        trackPos = pp;
+    else if (hasSharedIntel)
+        trackPos = intel.spot;
+    else if (hasPersonalIntel)
+        trackPos = lastSeen;
+
+    // state based movement
+    if (seePlayer)
+    {
         if (state != State::Chase)
         {
             state = State::Chase;
             requestPathTo(world, lastSeen);
         }
     }
-    else
+    else if (hasSharedIntel)
     {
-        // move to intel if player notin sight
-        if (intel.timeToLive > 0.0f)
+        if (state == State::Patrol)
         {
-            if (state == State::Patrol)
-            {
-                state = State::Search;
-                requestPathTo(world, intel.spot);
-            }
+            state = State::Search;
+            requestPathTo(world, intel.spot);
         }
-        else
+    }
+    else if (!hasPersonalIntel)
+    {
+        if (state != State::Patrol)
         {
-            // if no intel fall back to own memory or patrol
-            if (memory > 0.0f)
-            {
-                memory -= dt;
-            }
-            else if (state == State::Chase || state == State::Search)
-            {
-                state = State::Patrol;
-                retargetTimer = 0.0f;
-            }
+            state = State::Patrol;
+            retargetTimer = 0.0f;
         }
     }
 
-    // repath occsionjally during chase/search
+    // rotate towards player
+    auto wrapPi = [](float a)
+    { while(a<=-PI)a+=2*PI; while(a>PI)a-=2*PI; return a; };
+    auto rotateTowards = [&](float cur, float tgt, float maxStep)
+    {
+        float d = wrapPi(tgt - cur);
+        if (d > maxStep)
+            d = maxStep;
+        if (d < -maxStep)
+            d = -maxStep;
+        return wrapPi(cur + d);
+    };
+
+    if (knowsTarget)
+    {
+        Vector2 aim = {trackPos.x - pos.x, trackPos.y - pos.y};
+        float L = sqrtf(aim.x * aim.x + aim.y * aim.y);
+        if (L > 1e-4f)
+        {
+            float targetAng = atan2f(aim.y, aim.x);
+            facingRad = rotateTowards(facingRad, targetAng, turnRate * dt);
+        }
+    }
+    else if (pathIndex < (int)path.size())
+    {
+        // face next waypoint instead
+        Vector2 wp = {path[pathIndex].x - pos.x, path[pathIndex].y - pos.y};
+        float L = sqrtf(wp.x * wp.x + wp.y * wp.y);
+        if (L > 1e-4f)
+        {
+            float targetAng = atan2f(wp.y, wp.x);
+            facingRad = rotateTowards(facingRad, targetAng, turnRate * dt);
+        }
+    }
+
+    // repath every now and then
     repathTimer -= dt;
     if (repathTimer <= 0.0f)
     {
@@ -146,45 +190,113 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player, SquadI
         {
             requestPathTo(world, pp);
         }
-        else if (intel.timeToLive > 0.0f)
+        else if (hasSharedIntel)
         {
             requestPathTo(world, intel.spot);
         }
-        else if (state == State::Search)
+        else if (state == State::Search && hasPersonalIntel)
         {
-            // keep heading to last seen
             requestPathTo(world, lastSeen);
         }
     }
 
-    // patrol state retarget
-    if (state == State::Patrol)
+    // find movement target
+    Vector2 desiredMove{0, 0};
+
+    if (seePlayer)
     {
-        retargetTimer -= dt;
-        if (retargetTimer <= 0.0f)
-            pickNewPatrolTarget(world);
+        // ranged kiting/strafe using TRUE position
+        if (distP < minRange)
+        {
+            desiredMove = {-dirToP.x, -dirToP.y};
+        }
+        else if (distP > preferredRange * 1.2f)
+        {
+            desiredMove = dirToP;
+        }
+        else
+        {
+            Vector2 right = {-dirToP.y, dirToP.x};
+            float side = (((int)GetTime()) % 4 < 2) ? 1.0f : -1.0f;
+            desiredMove = {right.x * side, right.y * side};
+            float scale = (strafeSpeed / fmaxf(speed, 1.0f));
+            desiredMove.x *= scale;
+            desiredMove.y *= scale;
+        }
+        state = State::Chase;
+    }
+    else
+    {
+        // No line of sight: use pathing; do not steer toward unknown true player pos
+        if (state == State::Patrol)
+        {
+            retargetTimer -= dt;
+            if (retargetTimer <= 0.0f)
+                pickNewPatrolTarget(world);
+        }
     }
 
-    // state movement
-    switch (state)
+    // knockback and stun
+    desiredMove.x += knockVel.x / fmaxf(speed, 1.0f);
+    desiredMove.y += knockVel.y / fmaxf(speed, 1.0f);
+    knockVel.x -= knockVel.x * fminf(knockFriction * dt, 1.0f);
+    knockVel.y -= knockVel.y * fminf(knockFriction * dt, 1.0f);
+
+    if (hitStunTimer > 0.0f)
     {
-    case State::Patrol:
-        followPath(world, dt);
-        break;
-    case State::Chase:
-        followPath(world, dt);
-        break;
-    case State::Search:
-        followPath(world, dt);
-        // if reached lastSeen, fall back to patrolling after a short wait
-        if (pathIndex >= (int)path.size())
-        {
-            state = State::Patrol;
-            retargetTimer = 0.0f;
-        }
-        break;
+        desiredMove.x *= 0.25f;
+        desiredMove.y *= 0.25f;
     }
-}
+
+    // normalise movement
+    float m = sqrtf(desiredMove.x * desiredMove.x + desiredMove.y * desiredMove.y);
+    if (m > 1e-4f)
+    {
+        desiredMove.x /= m;
+        desiredMove.y /= m;
+    }
+
+    // actually moving time
+    if (seePlayer)
+    {
+        Vector2 delta = {desiredMove.x * speed * dt, desiredMove.y * speed * dt};
+        world.resolveCollision(pos, radius, delta);
+    }
+    else
+    {
+        switch (state)
+        {
+        case State::Patrol:
+            followPath(world, dt);
+            break;
+        case State::Chase:
+            followPath(world, dt);
+            break; // chasing last fix
+        case State::Search:
+            followPath(world, dt);
+            break;
+        }
+    }
+
+    // chasing distance
+    if (state == State::Search)
+    {
+        // clear intel after a couple seconds without line of sight
+        if (hasSharedIntel)
+        {
+            float dx = pos.x - intel.spot.x, dy = pos.y - intel.spot.y;
+            if (dx * dx + dy * dy <= 24.0f * 24.0f)
+            {
+                intel.timeToLive = 0.0f;
+            }
+        }
+    }
+    if (state == State::Chase && distP > maxChaseRange && !hasSharedIntel && !hasPersonalIntel)
+    {
+        state = State::Patrol;
+        retargetTimer = 0.0f;
+    }
+};
 
 void Hunter::draw() const
 {
@@ -198,6 +310,24 @@ void Hunter::draw() const
         Vector2 eye = {pos.x + d.x * (radius * 0.6f), pos.y + d.y * (radius * 0.6f)};
         DrawCircleV(eye, 3.0f, BLACK);
     }
+
+    // hit flash
+    if (hitFlashTimer > 0.0f)
+    {
+        float a = fminf(hitFlashTimer / 0.12f, 1.0f);
+        DrawCircleV(pos, radius + 2.0f, Fade(WHITE, 0.6f * a));
+    }
+
+    // healthbar
+    float f = hp / fmaxf(1.0f, maxHp);
+    int w = 36, h = 5;
+    int ox = (int)(pos.x - w / 2), oy = (int)(pos.y - radius - 12);
+    DrawRectangle(ox - 1, oy - 1, w + 2, h + 2, BLACK);
+    DrawRectangle(ox, oy, w, h, Color{30, 30, 30, 220});
+    Color hpCol = (f > 0.6f) ? Color{80, 220, 120, 255} : (f > 0.3f) ? Color{240, 200, 80, 255}
+                                                                     : Color{230, 80, 60, 255};
+    DrawRectangle(ox, oy, (int)(w * f), h, hpCol);
+    DrawRectangleLines(ox - 1, oy - 1, w + 2, h + 2, BLACK);
 }
 
 void Hunter::drawFOV() const
@@ -255,6 +385,8 @@ bool Hunter::tryShoot(float dt, const Tilemap &world, const Player &player,
     shootTimer -= dt;
     if (shootTimer > 0.0f)
         return false;
+    if (hitStunTimer > 0.0f)
+        return false;
 
     // must see player and be in range
     Vector2 pp = player.getPosition();
@@ -300,4 +432,25 @@ bool Hunter::tryShoot(float dt, const Tilemap &world, const Player &player,
         shootTimer = (burstLeft == 0) ? burstCooldown : shootCooldown;
     }
     return true;
+}
+
+void Hunter::applyHit(float dmg, Vector2 sourcePos, float impulse)
+{
+    hp -= dmg;
+    if (hp < 0.0f)
+        hp = 0.0f;
+    // flash and small stagger
+    hitFlashTimer = 0.12f;
+    hitStunTimer = 0.15f;
+
+    // knockback
+    Vector2 away{pos.x - sourcePos.x, pos.y - sourcePos.y};
+    float L = sqrtf(away.x * away.x + away.y * away.y);
+    if (L > 1e-4)
+    {
+        away.x /= L;
+        away.y /= L;
+    }
+    knockVel.x += away.x * impulse;
+    knockVel.y += away.y * impulse;
 }
