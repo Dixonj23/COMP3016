@@ -1,4 +1,5 @@
 #include "Player.hpp"
+#include "Tilemap.hpp"
 #include "Hunter.hpp"
 #include <cmath>
 
@@ -7,7 +8,7 @@ Player::Player(Vector2 startPos) : pos(startPos)
     applyStageVisuals();
 }
 
-void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<Animal> &animals)
+void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<Animal> &animals, std::vector<Hunter> &hunters)
 {
     // cooldown timers
     if (biteTimer > 0.0f)
@@ -157,6 +158,16 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
                         a.alive = false;
                 }
 
+                for (auto &h : hunters)
+                {
+                    float dx = h.pos.x - pos.x, dy = h.pos.y - pos.y;
+                    float rr = (slamRadius + h.radius + slamKillPad);
+                    if (dx * dx + dy * dy <= rr * rr)
+                    {
+                        h.takeDamage(slamDamage());
+                    }
+                }
+
                 // break walls (except outer border)
                 world.carveCircle(pos, slamRadius, true);
             }
@@ -184,6 +195,16 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
             {
                 a.alive = false;
                 food += 1;
+            }
+        }
+
+        for (auto &h : hunters)
+        {
+            float dx = h.pos.x - pos.x, dy = h.pos.y - pos.y;
+            float rr = (radius + h.radius + dashKillPad);
+            if (dx * dx + dy * dy <= rr * rr)
+            {
+                h.takeDamage(dashDamage());
             }
         }
 
@@ -294,7 +315,7 @@ void Player::draw() const
 static inline float dot(Vector2 a, Vector2 b) { return a.x * b.x + a.y * b.y; }
 static inline float len(Vector2 v) { return sqrtf(v.x * v.x + v.y * v.y); }
 
-int Player::tryBite(std::vector<Animal> &animals)
+int Player::tryBite(std::vector<Animal> &animals, std::vector<Hunter> &hunters)
 {
     if (!IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         return 0;
@@ -331,6 +352,21 @@ int Player::tryBite(std::vector<Animal> &animals)
             eaten++;
             // heal on eating
             hp += 10;
+        }
+    }
+
+    for (auto &h : hunters)
+    { // you'll pass a reference to this container
+        Vector2 to = {h.pos.x - pos.x, h.pos.y - pos.y};
+        float d = sqrtf(to.x * to.x + to.y * to.y);
+        if (d > (biteRange + h.radius))
+            continue;
+        Vector2 n = (d > 0.0001f) ? Vector2{to.x / d, to.y / d} : Vector2{0, 0};
+        Vector2 fwd = {cosf(angle), sinf(angle)};
+        float cosHalfArc = cosf((biteArcDeg * 0.5f) * (PI / 180.0f));
+        if (fwd.x * n.x + fwd.y * n.y >= cosHalfArc)
+        {
+            h.takeDamage(biteDamage());
         }
     }
 

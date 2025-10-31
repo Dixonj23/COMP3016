@@ -1,9 +1,9 @@
 #pragma once
 #include <raylib.h>
 #include <vector>
-#include "Tilemap.hpp"
-#include "Player.hpp" //for position
 #include "Combat.hpp"
+#include "Player.hpp"
+#include "Tilemap.hpp"
 
 struct SquadIntel
 {

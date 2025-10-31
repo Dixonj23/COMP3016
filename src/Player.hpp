@@ -5,11 +5,13 @@
 #include <cmath>
 #include "Boulder.hpp"
 
+class Hunter;
+
 class Player
 {
 public:
     Player(Vector2 startPos);
-    void update(float dt, Tilemap &world, const Camera2D &cam, std::vector<Animal> &animals);
+    void update(float dt, Tilemap &world, const Camera2D &cam, std::vector<Animal> &animals, std::vector<Hunter> &hunters);
     void draw() const;
     Vector2 getPosition() const { return pos; }
 
@@ -75,7 +77,7 @@ public:
     }
 
     // stage 1 bite function, returns number of things consumed
-    int tryBite(std::vector<Animal> &animals);
+    int tryBite(std::vector<Animal> &animals, std::vector<Hunter> &hunters);
 
     float getBiteCooldownFraction() const
     {

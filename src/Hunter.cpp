@@ -1,4 +1,6 @@
 #include "Hunter.hpp"
+#include "Player.hpp"
+#include "Tilemap.hpp"
 #include <cmath>
 
 static float len(Vector2 v) { return sqrtf(v.x * v.x + v.y * v.y); }

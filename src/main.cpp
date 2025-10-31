@@ -72,7 +72,7 @@ int main()
 
         // Update player
         cam.target = monster.getPosition();
-        monster.update(dt, world, cam, animals);
+        monster.update(dt, world, cam, animals, hunters);
 
         // Update camera shake
         if (shakeTime > 0.0f)
@@ -97,7 +97,7 @@ int main()
 
         if (!monster.isTransforming() && !monster.isDashing())
         {
-            monster.tryBite(animals);
+            monster.tryBite(animals, hunters);
         }
 
         Vector2 slamPos;
@@ -276,16 +276,8 @@ int main()
                 Color c = Fade(WHITE, 0.35f * (1.0f - t));
                 DrawCircleSector(h.pos, r, startDeg, endDeg, 40, c);
             }
-        }
 
-        EndMode2D();
-        EndMode2D();
-        EndTextureMode();
-
-        // hunter healtbars
-        BeginMode2D(cam);
-        for (auto &h : hunters)
-        {
+            // hunter healthbars
             if (!h.isAlive())
                 continue;
             float f = h.hp / h.maxHp;
@@ -294,7 +286,10 @@ int main()
             DrawRectangleLines((int)top.x - 1, (int)top.y - 1, w + 2, t + 2, BLACK);
             DrawRectangle((int)top.x, (int)top.y, (int)(w * f), t, (f > 0.3f) ? SKYBLUE : ORANGE);
         }
+
         EndMode2D();
+        EndMode2D();
+        EndTextureMode();
 
         // Draw world
         BeginDrawing();
