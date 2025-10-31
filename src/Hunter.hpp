@@ -3,6 +3,7 @@
 #include <vector>
 #include "Tilemap.hpp"
 #include "Player.hpp" //for position
+#include "Combat.hpp"
 
 struct SquadIntel
 {
@@ -24,6 +25,32 @@ public:
     float radius = 12.0f;
     float speed = 120.0f;
     float turnRate = 6.0f;
+
+    // Health
+    float maxHp = 120.0f;
+    float hp = 120.0f;
+    bool isAlive() const { return hp > 0.0f; }
+    void takeDamage(float dmg)
+    {
+        hp -= dmg;
+        if (hp < 0.0f)
+            hp = 0.0f;
+    }
+
+    // rifle
+    float shootRange = 560.0f;
+    float shootCooldown = 0.6f;
+    float burstCooldown = 1.2f;
+    int burstSize = 3;
+    int burstLeft = 0;
+    float shootTimer = 0.0f;
+
+    bool canSeePlayerCone(const Tilemap &world, Vector2 pp) const;
+    bool hasFriendlyInLine(const std::vector<Hunter> &squad, int selfIndex,
+                           Vector2 start, Vector2 end, float safety) const;
+    bool tryShoot(float dt, const Tilemap &world, const Player &player,
+                  const std::vector<Hunter> &squad, int selfIndex,
+                  std::vector<Bullet> &outBullets);
 
     // sensing
     float fovDeg = 70.0f;

@@ -1,4 +1,5 @@
 #include "Player.hpp"
+#include "Hunter.hpp"
 #include <cmath>
 
 Player::Player(Vector2 startPos) : pos(startPos)
@@ -328,6 +329,8 @@ int Player::tryBite(std::vector<Animal> &animals)
         {
             a.alive = false;
             eaten++;
+            // heal on eating
+            hp += 10;
         }
     }
 
@@ -399,6 +402,11 @@ void Player::applyStageVisuals()
     int idx = (stage <= 1) ? 0 : (stage == 2 ? 1 : (stage == 3 ? 2 : 3));
     radius = stageRadii[idx];
     bodyColor = stageColours[idx];
-
     biteRange = 24.0f + (radius - 14) * 1.2f;
+
+    // small hp bump per stage
+    float stageHp[4] = {100.0f, 115.0f, 130.0f, 150.0f};
+    maxHp = stageHp[idx];
+    if (hp > maxHp)
+        hp = maxHp;
 }

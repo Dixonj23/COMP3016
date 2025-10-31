@@ -213,3 +213,89 @@ void Hunter::drawFOV() const
     // Soft fill + outline so it’s visible
     DrawCircleSector(pos, sightRange, startDeg, endDeg, 36, c);
 }
+
+bool Hunter::hasFriendlyInLine(const std::vector<Hunter> &squad, int selfIndex,
+                               Vector2 start, Vector2 end, float safety) const
+{
+    // distance from a point to segment helper
+    auto segDist2 = [](Vector2 a, Vector2 b, Vector2 p)
+    {
+        Vector2 ab{b.x - a.x, b.y - a.y}, ap{p.x - a.x, p.y - a.y};
+        float ab2 = ab.x * ab.x + ab.y * ab.y;
+        if (ab2 < 1e-4f)
+            return (ap.x * ap.x + ap.y * ap.y);
+        float t = (ap.x * ab.x + ap.y * ab.y) / ab2;
+        t = fminf(1.0f, fmaxf(0.0f, t));
+        Vector2 c{a.x + ab.x * t, a.y + ab.y * t};
+        float dx = p.x - c.x, dy = p.y - c.y;
+        return dx * dx + dy * dy;
+    };
+
+    float safety2 = safety * safety;
+    for (int i = 0; i < (int)squad.size(); ++i)
+    {
+        if (i == selfIndex)
+            continue;
+        const Hunter &h = squad[i];
+        if (!h.isAlive())
+            continue;
+        // ignore friendlies very close behind the muzzle
+        if (segDist2(start, end, h.pos) <= safety2)
+            return true;
+    }
+    return false;
+}
+
+bool Hunter::tryShoot(float dt, const Tilemap &world, const Player &player,
+                      const std::vector<Hunter> &squad, int selfIndex,
+                      std::vector<Bullet> &out)
+{
+    shootTimer -= dt;
+    if (shootTimer > 0.0f)
+        return false;
+
+    // must see player and be in range
+    Vector2 pp = player.getPosition();
+    Vector2 toP{pp.x - pos.x, pp.y - pos.y};
+    float dist = len(toP);
+    if (dist > shootRange)
+        return false;
+
+    Vector2 fwd{cosf(facingRad), sinf(facingRad)};
+    Vector2 dir = (dist > 1e-4f) ? Vector2{toP.x / dist, toP.y / dist} : Vector2{0, 0};
+    float cosHalf = cosf((fovDeg * 0.5f) * (PI / 180.0f));
+    if (fwd.x * dir.x + fwd.y * dir.y < cosHalf)
+        return false;
+    if (!world.hasLineOfSight(pos, pp))
+        return false;
+
+    // friendly fire avoidance
+    Vector2 end{pos.x + dir.x * (dist + 60.0f), pos.y + dir.y * (dist + 60.0f)};
+    if (hasFriendlyInLine(squad, selfIndex, pos, end, 20.0f))
+    {
+        // hold fire and try again later
+        shootTimer = 0.1f;
+        return false;
+    }
+
+    // fire one bullet
+    Bullet b;
+    b.team = Team::Hunter;
+    b.pos = {pos.x + fwd.x * (radius + 6.0f), pos.y + fwd.y * (radius + 6.0f)};
+    b.vel = {dir.x * 700.0f, dir.y * 700.0f};
+    b.damage = 12.0f;
+    out.push_back(b);
+
+    // handle burst
+    if (burstLeft <= 0)
+    {
+        burstLeft = burstSize - 1;
+        shootTimer = shootCooldown;
+    }
+    else
+    {
+        burstLeft--;
+        shootTimer = (burstLeft == 0) ? burstCooldown : shootCooldown;
+    }
+    return true;
+}

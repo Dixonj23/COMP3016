@@ -3,6 +3,7 @@
 #include "Animal.hpp"
 #include "Boulder.hpp"
 #include "Hunter.hpp"
+#include "Combat.hpp"
 #include <vector>
 #include <algorithm>
 #include <raymath.h>
@@ -19,6 +20,8 @@ std::vector<ImpactFX> impacts;
 std::vector<Boulder> boulders;
 
 std::vector<Hunter> hunters;
+
+std::vector<Bullet> bullets;
 
 SquadIntel squadIntel;
 
@@ -46,7 +49,7 @@ int main()
     for (auto &a : animals)
         a.randomise(world);
 
-    // spawn 2 hunters
+    // spawn 4 hunters
     for (int i = 0; i < 4; i++)
     {
         Vector2 hpos = world.randomFloorPosition();
@@ -115,10 +118,70 @@ int main()
         }
 
         // update hunters
-        for (auto &h : hunters)
+        for (int i = 0; i < (int)hunters.size(); ++i)
         {
+            auto &h = hunters[i];
+            if (!h.isAlive())
+                continue;
             h.update(dt, world, monster, squadIntel);
+            h.tryShoot(dt, world, monster, hunters, i, bullets);
         }
+
+        // update bullets
+        for (auto &b : bullets)
+            b.update(dt, world);
+
+        // hit checks
+        for (auto &b : bullets)
+        {
+            if (!b.alive)
+                continue;
+
+            if (b.team == Team::Hunter)
+            {
+                // hit player?
+                if (monster.isAlive())
+                {
+                    float dx = monster.getPosition().x - b.pos.x;
+                    float dy = monster.getPosition().y - b.pos.y;
+                    float rr = (monster.getRadius() + b.radius);
+                    if (dx * dx + dy * dy <= rr * rr)
+                    {
+                        monster.takeDamage(b.damage);
+                        b.alive = false;
+                        continue;
+                    }
+                }
+            }
+            else
+            {
+                for (auto &h : hunters)
+                {
+                    if (!h.isAlive())
+                        continue;
+                    float dx = h.pos.x - b.pos.x, dy = h.pos.y - b.pos.y;
+                    float rr = (h.radius + b.radius);
+                    if (dx * dx + dy * dy <= rr * rr)
+                    {
+                        h.takeDamage(b.damage);
+                        b.alive = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Remove dead bullets
+        bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
+                                     [](const Bullet &b)
+                                     { return !b.alive; }),
+                      bullets.end());
+
+        // Remove dead hunters (maybe draw corpses later?)
+        hunters.erase(std::remove_if(hunters.begin(), hunters.end(),
+                                     [](const Hunter &h)
+                                     { return !h.isAlive(); }),
+                      hunters.end());
 
         // Update wildlife
         for (auto &a : animals)
@@ -219,6 +282,20 @@ int main()
         EndMode2D();
         EndTextureMode();
 
+        // hunter healtbars
+        BeginMode2D(cam);
+        for (auto &h : hunters)
+        {
+            if (!h.isAlive())
+                continue;
+            float f = h.hp / h.maxHp;
+            int w = 24, t = 4;
+            Vector2 top{h.pos.x - w * 0.5f, h.pos.y - h.radius - 10.0f};
+            DrawRectangleLines((int)top.x - 1, (int)top.y - 1, w + 2, t + 2, BLACK);
+            DrawRectangle((int)top.x, (int)top.y, (int)(w * f), t, (f > 0.3f) ? SKYBLUE : ORANGE);
+        }
+        EndMode2D();
+
         // Draw world
         BeginDrawing();
         ClearBackground(Color{12, 30, 28, 255});
@@ -231,6 +308,8 @@ int main()
             b.draw();
         for (auto &h : hunters)
             h.draw();
+        for (auto &bul : bullets)
+            bul.draw();
         monster.draw();
         EndMode2D();
 
@@ -244,6 +323,15 @@ int main()
         // HUD
         int hudX = 20;
         int hudY = 20;
+
+        // Player HP bar
+        int hpX = 20, hpY = GetScreenHeight() - 40;
+        int bw = 240, bh = 16;
+        DrawRectangleLines(hpX - 2, hpY - 2, bw + 4, bh + 4, WHITE);
+        float hpFrac = monster.getHP() / monster.getMaxHP();
+        DrawRectangle(hpX, hpY, (int)(bw * fmaxf(0.0f, hpFrac)), bh, (hpFrac > 0.3f) ? GREEN : RED);
+        DrawText(TextFormat("HP: %d / %d", (int)monster.getHP(), (int)monster.getMaxHP()),
+                 hpX, hpY - 22, 18, WHITE);
 
         // stage/food
         DrawText(TextFormat("Stage: %d", monster.getStage()), hudX, hudY, 22, WHITE);

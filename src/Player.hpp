@@ -17,6 +17,40 @@ public:
     bool showDashHint = false;
     float dashHintTimer = 0.0f;
 
+    // Health/combat
+    int maxHp = 100;
+    int hp = 100;
+
+    bool isAlive() const { return hp > 0.0f; }
+    void takeDamage(float dmg)
+    {
+        hp -= dmg;
+        if (hp < 0.0f)
+            hp = 0.0f;
+    }
+    float getHP() const { return hp; }
+    float getMaxHP() const { return maxHp; }
+
+    // stage damage multipliers
+    float biteDamage() const
+    {
+        switch (stage)
+        {
+        case 1:
+            return 5;
+        case 2:
+            return 10;
+        case 3:
+            return 18;
+        default:
+            return 26;
+        }
+    }
+    float dashDamage() const { return (stage >= 2) ? 15.0f : 0.0f; }
+    float boulderDirectDamage() const { return (stage >= 3) ? 40.0f : 0.0f; }
+    float boulderAoeDamage() const { return (stage >= 3) ? 25.0f : 0.0f; }
+    float slamDamage() const { return (stage >= 4) ? 60.0f : 0.0f; }
+
     // vision
     float getVisionRadius() const
     {
