@@ -27,6 +27,10 @@ void Player::update(float dt, Tilemap &world, const Camera2D &cam, std::vector<A
         boulderCDTimer -= dt;
     if (slamCDTimer > 0.0f)
         slamCDTimer -= dt;
+    if (invulnTimer > 0.0f)
+        invulnTimer -= dt;
+    if (hurtFlashTimer > 0.0f)
+        hurtFlashTimer -= dt;
 
     // Getting mouse position in world space
     Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), cam);
@@ -249,6 +253,13 @@ void Player::draw() const
     Vector2 nose = {pos.x + cosf(angle) * (radius + 6.0f), pos.y + sinf(angle) * (radius + 6.0f)};
     DrawLineEx(pos, nose, 3.0f, BLACK);
 
+    // hurt flash FX
+    if (hurtFlashTimer > 0.0f)
+    {
+        float a = fminf(hurtFlashTimer / 0.18f, 1.0f);
+        DrawCircleV(pos, radius + 3.0f, Fade(WHITE, 0.7f * a));
+    }
+
     // transform FX
     if (transforming)
     {
@@ -350,8 +361,6 @@ int Player::tryBite(std::vector<Animal> &animals, std::vector<Hunter> &hunters)
         {
             a.alive = false;
             eaten++;
-            // heal on eating
-            hp += 10;
         }
     }
 
@@ -443,6 +452,22 @@ void Player::applyStageVisuals()
     // small hp bump per stage
     float stageHp[4] = {100.0f, 115.0f, 130.0f, 150.0f};
     maxHp = stageHp[idx];
-    if (hp > maxHp)
-        hp = maxHp;
+    hp = stageHp[idx];
+}
+
+bool Player::applyHit(float dmg)
+{
+    if (isInvulnerable() || hp <= 0.0f)
+        return false;
+
+    // apply damage
+    hp -= dmg;
+    if (hp < 0.0f)
+        hp = 0;
+
+    // i frames and hit flash
+    invulnTimer = invulnDuration;
+    hurtFlashTimer = 0.18;
+
+    return true;
 }

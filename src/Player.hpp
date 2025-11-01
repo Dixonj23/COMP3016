@@ -23,13 +23,19 @@ public:
     int maxHp = 100;
     int hp = 100;
 
+    float invulnDuration = 0.8f;
+    float invulnTimer = 0.0f;
+    float hurtFlashTimer = 0.0f;
+
     bool isAlive() const { return hp > 0.0f; }
+    bool isInvulnerable() const { return invulnTimer > 0.0f; }
     void takeDamage(float dmg)
     {
         hp -= dmg;
         if (hp < 0.0f)
             hp = 0.0f;
     }
+    bool applyHit(float dmg);
     float getHP() const { return hp; }
     float getMaxHP() const { return maxHp; }
 

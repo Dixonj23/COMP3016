@@ -147,8 +147,14 @@ int main()
                     float rr = (monster.getRadius() + b.radius);
                     if (dx * dx + dy * dy <= rr * rr)
                     {
-                        monster.takeDamage(b.damage);
-                        b.alive = false;
+                        if (monster.applyHit(b.damage))
+                        {
+                            b.alive = false;
+                        }
+                        else
+                        {
+                            b.alive = false;
+                        }
                         continue;
                     }
                 }
