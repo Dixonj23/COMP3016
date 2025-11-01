@@ -98,6 +98,10 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player, SquadI
     bool inCone = (distP <= sightRange) && (fwd.x * dirToP.x + fwd.y * dirToP.y >= cosHalf);
     bool seePlayer = inCone && world.hasLineOfSight(pos, pp);
 
+    bool proximity = (distP <= proximityRange);
+    if (proximity)
+        seePlayer = true;
+
     // share squad intel
     if (seePlayer)
     {
@@ -166,7 +170,12 @@ void Hunter::update(float dt, const Tilemap &world, const Player &player, SquadI
         if (L > 1e-4f)
         {
             float targetAng = atan2f(aim.y, aim.x);
-            facingRad = rotateTowards(facingRad, targetAng, turnRate * dt);
+            float turn = turnRate * dt;
+
+            // turn quick if monster near
+            if (distP <= proximityRange * 0.9f)
+                turn *= 1.8f;
+            facingRad = rotateTowards(facingRad, targetAng, turn);
         }
     }
     else if (pathIndex < (int)path.size())

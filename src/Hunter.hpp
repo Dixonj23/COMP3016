@@ -60,6 +60,7 @@ public:
                   std::vector<Bullet> &outBullets);
 
     // sensing
+    float proximityRange = 70.0f;
     float fovDeg = 70.0f;
     float sightRange = 520.0f;
     float facingRad = 0.0f;
