@@ -5,30 +5,6 @@
 #include <cmath>
 #include <raymath.h>
 
-void Tilemap::loadExampleMap()
-{
-    generateCave(1337, 45, 5);
-
-    /* old world gen code
-    for (int y = 0; y < HEIGHT; ++y)
-    {
-        for (int x = 0; x < WIDTH; ++x)
-        {
-            bool border = (x == 0 || y == 0 || x == WIDTH - 1 || y == HEIGHT - 1);
-            bool wall = border;
-
-            // Add some random internal walls
-            if (!border && GetRandomValue(0, 100) < 10)
-            { // 10% chance
-                wall = true;
-            }
-
-            map[y][x] = wall ? 1 : 0;
-        }
-    }
-    */
-}
-
 bool Tilemap::isWall(int tx, int ty) const
 {
     if (tx < 0 || ty < 0 || tx >= WIDTH || ty >= HEIGHT)

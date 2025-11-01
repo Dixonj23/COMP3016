@@ -9,7 +9,6 @@ public:
     static const int WIDTH = 100;
     static const int HEIGHT = 100;
 
-    void loadExampleMap();
     void draw() const;
     bool isWall(int tx, int ty) const;
 

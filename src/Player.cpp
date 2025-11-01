@@ -365,7 +365,7 @@ int Player::tryBite(std::vector<Animal> &animals, std::vector<Hunter> &hunters)
     }
 
     for (auto &h : hunters)
-    { // you'll pass a reference to this container
+    {
         Vector2 to = {h.pos.x - pos.x, h.pos.y - pos.y};
         float d = sqrtf(to.x * to.x + to.y * to.y);
         if (d > (biteRange + h.radius))
@@ -375,7 +375,7 @@ int Player::tryBite(std::vector<Animal> &animals, std::vector<Hunter> &hunters)
         float cosHalfArc = cosf((biteArcDeg * 0.5f) * (PI / 180.0f));
         if (fwd.x * n.x + fwd.y * n.y >= cosHalfArc)
         {
-            h.applyHit(biteDamage(), /*sourcePos=*/pos, /*impulse=*/180.0f);
+            h.applyHit(biteDamage(), pos, 180.0f);
         }
     }
 
@@ -470,4 +470,30 @@ bool Player::applyHit(float dmg)
     hurtFlashTimer = 0.18;
 
     return true;
+}
+
+void Player::resetForNewRun(Vector2 spawn)
+{
+    // position
+    pos = spawn;
+    angle = 0.0f;
+
+    // core stuff
+    stage = 1;
+    food = 0;
+
+    // visuals and size
+    applyStageVisuals();
+
+    // movement/combat state
+    transforming = false;
+
+    // health / i-frames
+    hp = maxHp;
+    invulnTimer = 0.0f;
+    hurtFlashTimer = 0.0f;
+
+    // UI hints
+    showDashHint = false;
+    dashHintTimer = 0.0f;
 }

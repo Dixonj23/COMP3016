@@ -143,6 +143,9 @@ public:
         return false;
     }
 
+    // reset player when restarting game
+    void resetForNewRun(Vector2 spawn);
+
 private:
     Vector2 pos;
     float radius = 14.0f;
