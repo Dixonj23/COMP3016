@@ -34,6 +34,49 @@ std::vector<Bullet> bullets;
 
 SquadIntel squadIntel;
 
+static Vector2 NearestBorderPoint(const Tilemap &world, Vector2 p)
+{
+    float worldW = Tilemap::WIDTH * Tilemap::TILE_SIZE;
+    float worldH = Tilemap::HEIGHT * Tilemap::TILE_SIZE;
+
+    // distances to each edge
+    float dL = p.x;
+    float dR = worldW - p.x;
+    float dT = p.y;
+    float dB = worldH - p.y;
+
+    // choose nearest
+    float dmin = dL;
+    int edge = 0;
+    if (dR < dmin)
+    {
+        dmin = dR;
+        edge = 1;
+    }
+    if (dT < dmin)
+    {
+        dmin = dT;
+        edge = 2;
+    }
+    if (dB < dmin)
+    {
+        dmin = dB;
+        edge = 3;
+    }
+
+    switch (edge)
+    {
+    case 0:
+        return {0.0f, p.y}; // left
+    case 1:
+        return {worldW, p.y}; // right
+    case 2:
+        return {p.x, 0.0f}; // top
+    default:
+        return {p.x, worldH}; // bottom
+    }
+}
+
 int main()
 {
     InitWindow(1200, 800, "Emerge");
@@ -230,7 +273,12 @@ int main()
             if (exploded)
             {
                 // indent map
-                world.carveCircle(b.pos, 50.0f, (phase == GamePhase::Escape) ? true : false);
+                world.carveCircle(b.pos, 50.0f, true, nullptr);
+
+                if (phase == GamePhase::Escape)
+                {
+                    world.carveCircle(b.pos, 48.0f, false, nullptr);
+                }
 
                 // kill aoe
                 float aoe = 64.0f;
@@ -410,6 +458,63 @@ int main()
             Color c = Fade(WHITE, alpha);
             int tw = MeasureText(objective, 26);
             DrawText(objective, GetScreenWidth() / 2 - tw / 2, 16, 26, c);
+        }
+
+        // compass arrow to exit
+        if (phase == GamePhase::Escape)
+        {
+            Vector2 playerPos = monster.getPosition();
+            Vector2 targetWorld = exitActive ? exitPos : NearestBorderPoint(world, playerPos);
+            Vector2 to = {targetWorld.x - playerPos.x, targetWorld.y - playerPos.y};
+            float L = sqrtf(to.x * to.x + to.y * to.y);
+            if (L > 1e-4f)
+            {
+                to.x /= L;
+                to.y /= L;
+            }
+            else
+            {
+                to = {1, 0};
+            }
+            float ang = atan2f(to.y, to.x);
+
+            // place arrow on edge of screen
+            Vector2 screenCenter = {(float)GetScreenWidth() * 0.5f, (float)GetScreenHeight() * 0.5f};
+            float margin = 36.0f;
+            float maxX = screenCenter.x - margin;
+            float maxY = screenCenter.y - margin;
+            float sx = (to.x == 0.0f) ? 1e9f : maxX / fabsf(to.x);
+            float sy = (to.y == 0.0f) ? 1e9f : maxY / fabsf(to.y);
+            float k = fminf(sx, sy);
+            Vector2 arrowPos = {screenCenter.x + to.x * k, screenCenter.y + to.y * k};
+
+            // triangle arrow
+            float size = 18.0f;
+            // local space
+            Vector2 a = {+size, 0};
+            Vector2 b = {-size * 0.6f, +size * 0.6f};
+            Vector2 c = {-size * 0.6f, -size * 0.6f};
+            float cs = cosf(ang), sn = sinf(ang);
+            auto rot = [&](Vector2 v)
+            { return Vector2{v.x * cs - v.y * sn, v.x * sn + v.y * cs}; };
+            a = rot(a);
+            b = rot(b);
+            c = rot(c);
+            a.x += arrowPos.x;
+            a.y += arrowPos.y;
+            b.x += arrowPos.x;
+            b.y += arrowPos.y;
+            c.x += arrowPos.x;
+            c.y += arrowPos.y;
+
+            //  backing ring at center for readability
+            DrawCircleLines((int)screenCenter.x, (int)screenCenter.y, 22, Fade(GOLD, 0.25f));
+
+            // the arrow
+            DrawTriangle(c, b, a, Color{0, 0, 0, 120});
+            DrawTriangle({c.x - 1, c.y - 1}, {b.x - 1, b.y - 1}, {a.x - 1, a.y - 1}, Color{255, 255, 255, 120});
+            DrawTriangle(b, c, a, GOLD);
+            DrawTriangleLines(b, c, a, GOLD);
         }
 
         // HUD

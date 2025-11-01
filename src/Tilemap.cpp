@@ -358,7 +358,6 @@ bool Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBord
     maxTx = Clamp(maxTx, 0, WIDTH - 1);
     maxTy = Clamp(maxTy, 0, HEIGHT - 1);
 
-    float r2 = radiusPx * radiusPx;
     bool brokeBorder = false;
     Vector2 breakPos{};
 
@@ -368,12 +367,14 @@ bool Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBord
         {
             if (preserveBorder && isBorder(tx, ty))
                 continue;
-            // tile center in world
-            float cx = tx * (float)TILE_SIZE + TILE_SIZE * 0.5f;
-            float cy = ty * (float)TILE_SIZE + TILE_SIZE * 0.5f;
-            float dx = cx - centerWorld.x;
-            float dy = cy - centerWorld.y;
-            if (dx * dx + dy * dy <= r2)
+
+            Rectangle t = {
+                tx * (float)TILE_SIZE,
+                ty * (float)TILE_SIZE,
+                (float)TILE_SIZE,
+                (float)TILE_SIZE};
+
+            if (CheckCollisionCircleRec(centerWorld, radiusPx, t))
             {
                 if (map[ty][tx] == 1)
                 {
@@ -381,22 +382,22 @@ bool Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBord
                     if (isBorder(tx, ty))
                     {
                         brokeBorder = true;
-                        breakPos = {cx, cy};
+                        breakPos = {t.x + t.width * 0.5f, t.y + t.height * 0.5f};
                     }
                 }
             }
         }
-    }
 
-    if (brokeBorder)
-    {
-        breachFlag = true;
-        lastBreachPos = breakPos;
-        if (outBorderBreakPos)
-            *outBorderBreakPos = breakPos;
+        if (brokeBorder)
+        {
+            breachFlag = true;
+            lastBreachPos = breakPos;
+            if (outBorderBreakPos)
+                *outBorderBreakPos = breakPos;
+        }
     }
     return brokeBorder;
-}
+};
 
 // line of sight
 bool Tilemap::hasLineOfSight(Vector2 a, Vector2 b) const
@@ -551,4 +552,4 @@ bool Tilemap::findPath(Vector2 startWorld, Vector2 goalWorld, std::vector<Vector
     }
     // edge case, no path is found
     return false;
-}
+};
