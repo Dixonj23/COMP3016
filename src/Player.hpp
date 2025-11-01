@@ -104,6 +104,7 @@ public:
     bool isTransforming() const { return transforming; }
     float transformProgress() const { return transforming ? (transformElapsed / transformTime) : 0.0f; }
     int getStage() const { return stage; }
+    int getStageFoodCost() const { return evolveThresholds[stage - 1]; }
     int getFood() const { return food; }
 
     // Evolution VFX functions

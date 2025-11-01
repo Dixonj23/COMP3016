@@ -15,6 +15,15 @@ struct ImpactFX
     float elapsed = 0.0f;
 };
 
+enum class GamePhase
+{
+    Grow,
+    Hunt,
+    Escape,
+    Won
+};
+GamePhase phase = GamePhase::Grow;
+
 std::vector<ImpactFX> impacts;
 
 std::vector<Boulder> boulders;
@@ -29,6 +38,11 @@ int main()
 {
     InitWindow(1200, 800, "Emerge");
     SetTargetFPS(60);
+
+    // exit game parameters
+    bool exitActive = false;
+    Vector2 exitPos{0, 0};
+    float bannerTimer = 0.0f;
 
     // lighting
     int screenW = GetScreenWidth();
@@ -57,6 +71,9 @@ int main()
         h.spawnAt(world, hpos);
         hunters.push_back(h);
     }
+
+    // ensure border is locked
+    world.setAllowBorderBreak(false);
 
     Camera2D cam{};
     float shakeTime = 0.0f;
@@ -107,6 +124,11 @@ int main()
             shakeDuration = 0.14f;
             shakeTime = shakeDuration;
             shakeMagnitude = 8.0f;
+
+            if (phase == GamePhase::Escape)
+            {
+                world.carveCircle(slamPos, 48.0f, false, nullptr);
+            }
         }
 
         // decay the shared intel
@@ -207,6 +229,9 @@ int main()
             bool exploded = b.update(dt, world, animals);
             if (exploded)
             {
+                // indent map
+                world.carveCircle(b.pos, 50.0f, (phase == GamePhase::Escape) ? true : false);
+
                 // kill aoe
                 float aoe = 64.0f;
                 for (auto &a : animals)
@@ -244,6 +269,39 @@ int main()
         for (auto &fx : impacts)
         {
             fx.elapsed += dt;
+        }
+        if (phase == GamePhase::Grow && monster.getStage() == 4)
+        {
+            phase = GamePhase::Hunt;
+            bannerTimer = 3.0f;
+        }
+
+        // game ending logic
+        if (phase == GamePhase::Hunt && hunters.empty())
+        {
+            phase = GamePhase::Escape;
+            world.setAllowBorderBreak(true);
+            bannerTimer = 3.0f;
+        }
+        if (phase == GamePhase::Escape && !exitActive)
+        {
+            Vector2 breach;
+            if (world.consumeBorderBreach(breach))
+            {
+                exitActive = true;
+                exitPos = breach;
+                bannerTimer = 3.0f;
+            }
+        }
+        if (exitActive && phase == GamePhase::Escape)
+        {
+            float dx = monster.getPosition().x - exitPos.x;
+            float dy = monster.getPosition().y - exitPos.y;
+            if (dx * dx + dy * dy <= (monster.getRadius() + 28.0f) * (monster.getRadius() + 28.0f))
+            {
+                phase = GamePhase::Won;
+                bannerTimer = 4.0f;
+            }
         }
 
         // light mask
@@ -294,6 +352,14 @@ int main()
             }
         }
 
+        if (exitActive)
+        {
+            float t = (float)GetTime();
+            float r = 28.0f + 4.0f * sinf(t * 4.0f);
+            DrawCircleLines((int)exitPos.x, (int)exitPos.y, r, GOLD);
+            DrawCircleV(exitPos, 6.0f, Fade(GOLD, 0.8f));
+        }
+
         EndMode2D();
         EndMode2D();
         EndTextureMode();
@@ -322,6 +388,30 @@ int main()
         DrawTexturePro(lightRT.texture, src, dst, {0, 0}, 0.0f, WHITE);
         EndBlendMode();
 
+        // objective banner (fades)
+        if (bannerTimer > 0.0f)
+            bannerTimer -= dt;
+
+        const char *objective = nullptr;
+        if (phase == GamePhase::Grow)
+        {
+            objective = TextFormat("Objective: FEED, GROW, SURVIVE");
+        }
+        else if (phase == GamePhase::Hunt)
+            objective = TextFormat("Objective: ELIMINATE HUNTERS (%d left)", (int)hunters.size());
+        else if (phase == GamePhase::Escape)
+            objective = exitActive ? "Objective: ESCAPE THROUGH THE BREACH" : "Objective: BREAK THE BORDER WALL TO ESCAPE";
+        else if (phase == GamePhase::Won)
+            objective = "YOU ESCAPED! Thanks for playing.";
+
+        if (objective)
+        {
+            float alpha = (phase == GamePhase::Won) ? 1.0f : (bannerTimer > 0.0f ? fminf(bannerTimer / 3.0f, 1.0f) : 0.9f);
+            Color c = Fade(WHITE, alpha);
+            int tw = MeasureText(objective, 26);
+            DrawText(objective, GetScreenWidth() / 2 - tw / 2, 16, 26, c);
+        }
+
         // HUD
         int hudX = 20;
         int hudY = 20;
@@ -337,7 +427,7 @@ int main()
 
         // stage/food
         DrawText(TextFormat("Stage: %d", monster.getStage()), hudX, hudY, 22, WHITE);
-        DrawText(TextFormat("Food: %d", monster.getFood()), hudX, hudY + 24, 20, WHITE);
+        DrawText(TextFormat("Food: %d / %d", monster.getFood(), monster.getStageFoodCost()), hudX, hudY + 24, 20, WHITE);
 
         // bite cooldown bar
         float biteFrac = monster.getBiteCooldownFraction();

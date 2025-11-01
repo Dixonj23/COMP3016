@@ -12,7 +12,6 @@ public:
     void loadExampleMap();
     void draw() const;
     bool isWall(int tx, int ty) const;
-    bool isBorder(int tx, int ty) const;
 
     // collision
     void resolveCollision(Vector2 &pos, float radius, Vector2 delta) const;
@@ -25,7 +24,20 @@ public:
     Vector2 randomFloorPosition() const;
 
     // carve floor in a circular aread in world space
-    void carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBorder = true);
+    bool carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBorder = true, Vector2 *outBorderBreakPos = nullptr);
+
+    // toggle border destructability
+    void setAllowBorderBreak(bool v) { allowBorderBreak = v; }
+
+    // one use read
+    bool consumeBorderBreach(Vector2 &outPos)
+    {
+        if (!breachFlag)
+            return false;
+        breachFlag = false;
+        outPos = lastBreachPos;
+        return true;
+    }
 
     // tile helper functions
     inline Vector2 tileToWorldCenter(int tx, int ty) const
@@ -47,6 +59,11 @@ public:
 private:
     int map[HEIGHT][WIDTH];
 
+    bool allowBorderBreak = false;
+    bool breachFlag = false;
+    Vector2 lastBreachPos{};
+
+    bool isBorder(int tx, int ty) const { return tx <= 0 || ty <= 0 || tx > WIDTH - 1 || ty >= HEIGHT - 1; };
     // Variables for cave generation
     int countWallNeighbours(int x, int y) const;
     void floodFillRegions(std::vector<int> &regionIdOut, int &regionCount) const;

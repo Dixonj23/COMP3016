@@ -36,11 +36,6 @@ bool Tilemap::isWall(int tx, int ty) const
     return map[ty][tx] == 1;
 }
 
-bool Tilemap::isBorder(int tx, int ty) const
-{
-    return tx <= 0 || ty <= 0 || tx > WIDTH - 1 || ty >= HEIGHT - 1;
-}
-
 void Tilemap::draw() const
 {
     for (int y = 0; y < HEIGHT; ++y)
@@ -351,7 +346,7 @@ Vector2 Tilemap::randomFloorPosition() const
 }
 
 // wall destruction
-void Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBorder)
+bool Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBorder, Vector2 *outBorderBreakPos)
 {
     int minTx = (int)floorf((centerWorld.x - radiusPx) / TILE_SIZE);
     int minTy = (int)floorf((centerWorld.y - radiusPx) / TILE_SIZE);
@@ -364,12 +359,14 @@ void Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBord
     maxTy = Clamp(maxTy, 0, HEIGHT - 1);
 
     float r2 = radiusPx * radiusPx;
+    bool brokeBorder = false;
+    Vector2 breakPos{};
 
     for (int ty = minTy; ty <= maxTy; ++ty)
     {
         for (int tx = minTx; tx <= maxTx; ++tx)
         {
-            if (preserveBorder & isBorder(tx, ty))
+            if (preserveBorder && isBorder(tx, ty))
                 continue;
             // tile center in world
             float cx = tx * (float)TILE_SIZE + TILE_SIZE * 0.5f;
@@ -378,10 +375,27 @@ void Tilemap::carveCircle(Vector2 centerWorld, float radiusPx, bool preserveBord
             float dy = cy - centerWorld.y;
             if (dx * dx + dy * dy <= r2)
             {
-                map[ty][tx] = 0; // remove wall by making it a floor
+                if (map[ty][tx] == 1)
+                {
+                    map[ty][tx] = 0; // remove wall by making it a floor
+                    if (isBorder(tx, ty))
+                    {
+                        brokeBorder = true;
+                        breakPos = {cx, cy};
+                    }
+                }
             }
         }
     }
+
+    if (brokeBorder)
+    {
+        breachFlag = true;
+        lastBreachPos = breakPos;
+        if (outBorderBreakPos)
+            *outBorderBreakPos = breakPos;
+    }
+    return brokeBorder;
 }
 
 // line of sight
