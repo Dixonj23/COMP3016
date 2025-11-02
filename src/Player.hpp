@@ -166,7 +166,7 @@ private:
 
     // Evolution parameters
     int stage = 1;
-    int evolveThresholds[3] = {1, 2, 3};
+    int evolveThresholds[3] = {4, 8, 12};
 
     float stageRadii[4] = {14.0f, 18.0f, 22.0f, 26.0f};
     Color stageColours[4] = {
