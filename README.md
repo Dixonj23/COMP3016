@@ -11,6 +11,8 @@ Video
 
 Gameplay Description
 The player must go through various stages (Grow, Hunt, Escape) each with various objectives:
+| Phase | Objective | Description |
+|-------|------------|-------------|
 | Grow  | Feed on wildlife to evolve. | Each evolution unlocks a new ability (dash, boulder, slam). |
 | Hunt  | Eliminate the AI hunter squad. | Hunters use vision cones, ranged rifles, and squad intel sharing. |
 | Escape | Break the border wall to reach the surface. | Smash through the cave walls using high-level abilities. |
