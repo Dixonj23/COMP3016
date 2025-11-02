@@ -19,7 +19,16 @@ The player must go through various stages (Grow, Hunt, Escape) each with various
 
 
 Controls
-
+| Key | Action |
+|-----|---------|
+| **WASD** | Move |
+| **Mouse** | Aim / Bite Direction |
+| **Left Click** | Bite |
+| **Shift** | Dash (Stage 2+) |
+| **Right Click** | Boulder Attack (Stage 3+) |
+| **Q** | Slam (Stage 4+) |
+| **E** | Evolve |
+| **ESC** | Pause / Menu |
 
 Dependencies Used
 
