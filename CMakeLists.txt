@@ -8,7 +8,7 @@ include(FetchContent)
 FetchContent_Declare(
   raylib
   GIT_REPOSITORY https://github.com/raysan5/raylib.git
-  GIT_TAG 5.0   
+  GIT_TAG 4.5.0   
 )
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)  # build static raylib
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
