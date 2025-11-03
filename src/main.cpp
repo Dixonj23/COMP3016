@@ -135,7 +135,7 @@ static bool DrawButton(Rectangle r, const char *label, int fontSize = 28)
         fill = Color{30, 50, 60, 240};
 
     DrawRectangleRounded(r, 0.2f, 8, fill);
-    DrawRectangleRoundedLines(r, 0.2f, 8, Color{220, 230, 240, 220});
+    DrawRectangleRoundedLines(r, 0.2f, 8, 2, Color{220, 230, 240, 220});
     int tw = MeasureText(label, fontSize);
     DrawText(label, (int)(r.x + r.width / 2 - tw / 2), (int)(r.y + r.height / 2 - fontSize / 2), fontSize, WHITE);
     return click;
