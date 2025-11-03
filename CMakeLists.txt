@@ -30,11 +30,4 @@ if(MSVC)
 endif()
 
 
-add_custom_command(TARGET Emerge POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-          "${CMAKE_SOURCE_DIR}/assets"
-          "$<TARGET_FILE_DIR:Emerge>/assets"
-  COMMENT "Copying assets to output folder")
-
-
 set_property(TARGET Emerge PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
