@@ -25,7 +25,7 @@
 
 # Define required raylib variables
 PROJECT_NAME       ?= game
-RAYLIB_VERSION     ?= 5.0.0
+RAYLIB_VERSION     ?= 5.5.0
 RAYLIB_PATH        ?= ..\..
 
 # Define compiler path on Windows
@@ -418,4 +418,3 @@ ifeq ($(PLATFORM),PLATFORM_WEB)
 	del *.o *.html *.js
 endif
 	@echo Cleaning done
-
