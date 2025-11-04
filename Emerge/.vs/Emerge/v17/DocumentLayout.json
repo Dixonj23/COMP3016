@@ -1,0 +1,52 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Magpi\\COMP3016\\Emerge\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{EC84A252-8C00-4EA2-910F-EC2C82DC2E03}|Emerge.vcxproj|C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Animal.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EC84A252-8C00-4EA2-910F-EC2C82DC2E03}|Emerge.vcxproj|C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Boulder.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Boulder.hpp",
+              "DocumentMoniker": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Boulder.hpp",
+              "RelativeDocumentMoniker": "..\\VSCode Version\\src\\Boulder.hpp",
+              "ToolTip": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Boulder.hpp",
+              "RelativeToolTip": "..\\VSCode Version\\src\\Boulder.hpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-11-04T02:11:56.126Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Animal.hpp",
+              "DocumentMoniker": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Animal.hpp",
+              "RelativeDocumentMoniker": "..\\VSCode Version\\src\\Animal.hpp",
+              "ToolTip": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Animal.hpp",
+              "RelativeToolTip": "..\\VSCode Version\\src\\Animal.hpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-11-04T02:06:36.607Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
