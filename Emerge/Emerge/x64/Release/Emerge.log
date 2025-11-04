@@ -1,0 +1,75 @@
+﻿  Animal.cpp
+  Boulder.cpp
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(34,15): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Boulder.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(36,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Boulder.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(39,34): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Boulder.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(40,37): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Boulder.cpp')
+  
+  Combat.cpp
+  Hunter.cpp
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(34,15): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Hunter.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(36,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Hunter.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(39,34): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Hunter.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(40,37): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Hunter.cpp')
+  
+  main.cpp
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(34,15): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/main.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(36,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/main.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(39,34): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/main.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(40,37): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/main.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\main.cpp(350,30): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+  Player.cpp
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(34,15): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Player.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(36,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Player.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(39,34): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Player.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.hpp(40,37): warning C4244: 'return': conversion from 'const int' to 'float', possible loss of data
+  (compiling source file '../VSCode%20Version/src/Player.cpp')
+  
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.cpp(309,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.cpp(321,70): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.cpp(454,24): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.cpp(455,21): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.cpp(464,11): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Player.cpp(470,22): warning C4305: '=': truncation from 'double' to 'float'
+  Tilemap.cpp
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(332,19): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(332,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(333,19): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(333,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(334,19): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(334,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(335,19): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Magpi\COMP3016\VSCode Version\src\Tilemap.cpp(335,18): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 807 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Emerge.vcxproj -> C:\Users\Magpi\COMP3016\Emerge\x64\Release\Emerge.exe

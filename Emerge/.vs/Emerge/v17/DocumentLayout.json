@@ -3,6 +3,9 @@
   "WorkspaceRootPath": "C:\\Users\\Magpi\\COMP3016\\Emerge\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{EC84A252-8C00-4EA2-910F-EC2C82DC2E03}|Emerge.vcxproj|C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Tilemap.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{EC84A252-8C00-4EA2-910F-EC2C82DC2E03}|Emerge.vcxproj|C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Animal.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
@@ -16,11 +19,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
+              "Title": "Tilemap.cpp",
+              "DocumentMoniker": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Tilemap.cpp",
+              "RelativeDocumentMoniker": "..\\VSCode Version\\src\\Tilemap.cpp",
+              "ToolTip": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Tilemap.cpp",
+              "RelativeToolTip": "..\\VSCode Version\\src\\Tilemap.cpp",
+              "ViewState": "AgIAADIAAAAAAAAAAAAcwD8AAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-11-04T16:36:21.711Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "Boulder.hpp",
               "DocumentMoniker": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Boulder.hpp",
               "RelativeDocumentMoniker": "..\\VSCode Version\\src\\Boulder.hpp",
@@ -28,12 +44,11 @@
               "RelativeToolTip": "..\\VSCode Version\\src\\Boulder.hpp",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-11-04T02:11:56.126Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-11-04T02:11:56.126Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "Animal.hpp",
               "DocumentMoniker": "C:\\Users\\Magpi\\COMP3016\\VSCode Version\\src\\Animal.hpp",
               "RelativeDocumentMoniker": "..\\VSCode Version\\src\\Animal.hpp",
