@@ -735,7 +735,10 @@ int main()
 
         // Stage/food
         DrawText(TextFormat("Stage: %d", monster.getStage()), hudX, hudY, 22, WHITE);
-        DrawText(TextFormat("Food: %d / %d", monster.getFood(), monster.getStageFoodCost()), hudX, hudY + 24, 20, WHITE);
+        if (monster.getStage() < 4) {
+            DrawText(TextFormat("Food: %d / %d", monster.getFood(), monster.getStageFoodCost()), hudX, hudY + 24, 20, WHITE);
+        }
+    
 
         // Bite cooldown
         float biteFrac = monster.getBiteCooldownFraction();
