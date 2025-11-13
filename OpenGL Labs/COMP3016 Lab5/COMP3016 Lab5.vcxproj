@@ -132,11 +132,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\Downloads\LoadShaders.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="shaders\LoadShaders.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\Downloads\LoadShaders.h" />
+    <ClInclude Include="shaders\LoadShaders.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="fragmentShader.frag" />
+    <None Include="vertexShader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

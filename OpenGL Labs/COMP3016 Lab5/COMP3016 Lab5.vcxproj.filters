@@ -13,21 +13,29 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="shaders">
-      <UniqueIdentifier>{c72564ce-09df-43ff-bdfc-1930bdc711f7}</UniqueIdentifier>
+    <Filter Include="Source Files\shaders">
+      <UniqueIdentifier>{bf492962-ed6e-4eee-be23-3f912bdddcc3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\Downloads\LoadShaders.cpp">
-      <Filter>shaders</Filter>
+    <ClCompile Include="shaders\LoadShaders.cpp">
+      <Filter>Source Files\shaders</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\Downloads\LoadShaders.h">
-      <Filter>shaders</Filter>
+    <ClInclude Include="shaders\LoadShaders.h">
+      <Filter>Source Files\shaders</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vertexShader.vert">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="fragmentShader.frag">
+      <Filter>Source Files\shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

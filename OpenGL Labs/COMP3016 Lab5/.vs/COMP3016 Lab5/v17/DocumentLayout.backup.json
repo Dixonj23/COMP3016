@@ -5,6 +5,14 @@
     {
       "AbsoluteMoniker": "D:0:0:{780D3591-2181-4500-A331-C5F63CE2A7BA}|COMP3016 Lab5.vcxproj|C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{780D3591-2181-4500-A331-C5F63CE2A7BA}|COMP3016 Lab5.vcxproj|solutionrelative:main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{780D3591-2181-4500-A331-C5F63CE2A7BA}|COMP3016 Lab5.vcxproj|C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\fragmentShader.frag||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{780D3591-2181-4500-A331-C5F63CE2A7BA}|COMP3016 Lab5.vcxproj|solutionrelative:fragmentShader.frag||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{780D3591-2181-4500-A331-C5F63CE2A7BA}|COMP3016 Lab5.vcxproj|C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\vertexShader.vert||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{780D3591-2181-4500-A331-C5F63CE2A7BA}|COMP3016 Lab5.vcxproj|solutionrelative:vertexShader.vert||{8B382828-6202-11D1-8870-0000F87579D2}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,8 +22,34 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 2,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "fragmentShader.frag",
+              "DocumentMoniker": "C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\fragmentShader.frag",
+              "RelativeDocumentMoniker": "fragmentShader.frag",
+              "ToolTip": "C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\fragmentShader.frag",
+              "RelativeToolTip": "fragmentShader.frag",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-13T17:10:54.331Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "vertexShader.vert",
+              "DocumentMoniker": "C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\vertexShader.vert",
+              "RelativeDocumentMoniker": "vertexShader.vert",
+              "ToolTip": "C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\vertexShader.vert",
+              "RelativeToolTip": "vertexShader.vert",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-13T17:09:59.826Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -24,7 +58,7 @@
               "RelativeDocumentMoniker": "main.cpp",
               "ToolTip": "C:\\Users\\Magpi\\COMP3016\\OpenGL Labs\\COMP3016 Lab5\\main.cpp",
               "RelativeToolTip": "main.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAHcAAAAAAAAAAAAvwIMAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-11-13T15:06:07.11Z",
               "EditorCaption": ""
