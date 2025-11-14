@@ -39,6 +39,8 @@ enum Buffer_IDs { ArrayBuffer, NumBuffers = 4 };
 //Buffer objects
 GLuint Buffers[NumBuffers];
 
+
+
 int main()
 {
     // ----- Initialize GLFW -----
@@ -87,9 +89,16 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     float vertices[] = {
-    -0.5f, -0.5f, 0.0f, //pos 0 | x, y, z
-    0.5f, -0.5f, 0.0f, //pos 1
-    0.0f, 0.5f, 0.0f //pos 2
+        //positions             //colours
+        0.5f, 0.5f, 0.0f,       1.0f, 0.0f, 0.0f, //top right
+        0.5f, -0.5f, 0.0f,      0.0f, 1.0f, 0.0f, //bottom right
+        -0.5f, -0.5f, 0.0f,     0.0f, 0.0f, 1.0f, //bottom left
+        -0.5f, 0.5f, 0.0f,      1.0f, 1.0f, 1.0f //top left
+    };
+
+    unsigned int indices[] = {
+        0, 1, 3, //first triangle
+        1, 2, 3 //second triangle
     };
 
     //Declaration of index of VBO
@@ -101,31 +110,36 @@ int main()
     //Allocates buffer memory for the vertices
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    //Allocates vertex attribute memory for vertex shader
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    //Index of vertex attribute for vertex shader
-    glEnableVertexAttribArray(0);
-
     //Sets index of VAO
-    glGenVertexArrays(NumVAOs, VAOs);
+    glGenVertexArrays(NumVAOs, VAOs); //NumVAOs, VAOs
     //Binds VAO to a buffer
-    glBindVertexArray(VAOs[0]);
+    glBindVertexArray(VAOs[0]); //VAOs[0]
     //Sets indexes of all required buffer objects
-    glGenBuffers(NumBuffers, Buffers);
+    glGenBuffers(NumBuffers, Buffers); //NumBuffers, Buffers
+    //glGenBuffers(1, &EBO);
 
-    //Binds VAO to array buffer
+    //Binds vertex object to array buffer
     glBindBuffer(GL_ARRAY_BUFFER, Buffers[Triangles]);
-    //Allocates buffer memory for the vertices
+    //Allocates buffer memory for the vertices of the 'Triangles' buffer
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    //Allocates vertex attribute memory for vertex shader
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    //Index of vertex attribute for vertex shader
-    glEnableVertexAttribArray(0);
+    //Binding & allocation for indices
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[Indices]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    //Allocation & indexing of vertex attribute memory for vertex shader
+//Positions
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);
+
+//Colours
+glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
+glEnableVertexAttribArray(1);
 
     //Unbinding
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // ----- Main Loop -----
     while (!glfwWindowShouldClose(window))
@@ -138,7 +152,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT); //Clears the colour buffer
 
         glBindVertexArray(VAOs[0]); //Bind buffer object to render
-        glDrawArrays(GL_TRIANGLES, 0, 3); //Render buffer object
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         //Refreshing
         glfwSwapBuffers(window);
