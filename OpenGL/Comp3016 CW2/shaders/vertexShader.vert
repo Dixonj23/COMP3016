@@ -4,6 +4,8 @@ layout (location = 0) in vec3 position;
 //Texture coordinates from last stage
 layout (location = 2) in vec2 textureVertex;
 
+layout (location = 1) in vec3 aNormal;
+
 //Model-View-Projection Matrix
 uniform mat4 mvpIn;
 

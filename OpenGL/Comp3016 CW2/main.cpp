@@ -75,11 +75,40 @@ int currentLane = 0;          // -1 = left, 0 = centre, 1 = right
 const float laneWidth = 1.5f;
 
 //Obstacle (rock)
-vec3 rockPosition = vec3(0.0f, -2.0f, -15.0f);
+vec3 rockPosition = vec3(0.0f, -1.0f, -15.0f);
 int rockLane = 0; // -1, 0, 1
 
 // Collision 
 const float collisionZDistance = 1.5f;
+
+// Lane tiles
+const int NUM_LANES = 3;
+const int TILES_PER_LANE = 8;
+
+const float TILE_WORLD_LENGTH = 20.0f;
+const float TILE_RECYCLE_BEHIND = 30.0f;
+const float TILE_OVERLAP = 2.0f;
+
+float tileZ[NUM_LANES][TILES_PER_LANE] =
+{
+    { 0.0f, -TILE_WORLD_LENGTH },  // Left lane
+    { 0.0f, -TILE_WORLD_LENGTH },  // Centre lane
+    { 0.0f, -TILE_WORLD_LENGTH }   // Right lane
+};
+
+const float tileLength = 20.0f;
+const float tileHeight = 1.0f;
+
+float GetFurthestTileZ(int lane)
+{
+    float furthest = tileZ[lane][0];
+    for (int i = 1; i < TILES_PER_LANE; i++)
+    {
+        if (tileZ[lane][i] < furthest)
+            furthest = tileZ[lane][i];
+    }
+    return furthest;
+}
 
 int main()
 {
@@ -121,6 +150,7 @@ int main()
     //Loading of shaders
     Shader Shaders("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
     Model Rock("media/rock/Rock07-Base.obj");
+    Model Tile("media/tiles/bridge-straight.obj");
     Shaders.use();
 
     //Sets the viewport size within the window to match the window size of 1280x720
@@ -198,10 +228,57 @@ int main()
             rockLane = (rand() % 3) - 1; // -1, 0, 1
         }
 
-        std::cout << "Camera Z: " << cameraPosition.z
-            << " Rock Z: " << rockPosition.z << std::endl;
+       // std::cout << "Camera Z: " << cameraPosition.z << " Rock Z: " << rockPosition.z << std::endl;
+
+        //update floor positions
+        for (int lane = 0; lane < NUM_LANES; lane++)
+        {
+            for (int i = 0; i < TILES_PER_LANE; i++)
+            {
+                if (tileZ[lane][i] > cameraPosition.z + TILE_RECYCLE_BEHIND)
+                {
+                    float furthestZ = GetFurthestTileZ(lane);
+                    tileZ[lane][i] = (furthestZ + TILE_OVERLAP) - TILE_WORLD_LENGTH;
+                }
+            }
+        }
 
         //Drawing
+        for (int lane = 0; lane < NUM_LANES; lane++)
+        {
+            float laneX = (lane - 1) * laneWidth; // -1, 0, +1
+
+            for (int i = 0; i < TILES_PER_LANE; i++)
+            {
+                mat4 tileModel = mat4(1.0f);
+
+                mat4 T = translate(mat4(1.0f), vec3(laneX, -2.5f, tileZ[lane][i]));
+
+                mat4 R = mat4(1.0f);
+
+                 R = rotate(mat4(1.0f), radians(90.0f), vec3(0.0f, 1.0f, 0.0f));
+
+                mat4 S = scale(mat4(1.0f), vec3(TILE_WORLD_LENGTH, tileHeight, laneWidth * 0.9f));
+
+                // World-space translation 
+                tileModel = T * R * S;
+
+
+                
+
+                mat4 tileMVP = projection * view * tileModel;
+                Shaders.setMat4("mvpIn", tileMVP);
+
+                Tile.Draw(Shaders);
+            }
+        }
+
+
+        mat4 rockModel = mat4(1.0f);
+        rockModel = translate(rockModel, rockPosition);
+        rockModel = scale(rockModel, vec3(0.025f));
+
+        Shaders.setMat4("mvpIn", projection * view * rockModel);
         Rock.Draw(Shaders);
 
         //Refreshing
