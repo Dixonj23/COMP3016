@@ -6,7 +6,7 @@
 
 //GLM
 #include "glm/ext/vector_float3.hpp"
-#include <glm/gtc/type_ptr.hpp> //Access to the value_ptr
+#include <glm/gtc/type_ptr.hpp> 
 
 //ASSIMP
 #include <assimp/Importer.hpp>
@@ -19,6 +19,13 @@
 
 //GENERAL
 #include "main.h"
+
+/*
+
+    Quick not: im very new to OpenGL so i've included a frankly absurd amount of comments,
+    just so i can remember what everything is/does. my apologies now for all the green text
+
+*/
 
 using namespace std;
 using namespace glm;
@@ -61,6 +68,11 @@ float deltaTime = 0.0f;
 //Last value of time change
 float lastFrame = 0.0f;
 
+//Runner movement
+float forwardSpeed = 0.6f; 
+int currentLane = 0;          // -1 = left, 0 = centre, 1 = right
+const float laneWidth = 1.5f;
+
 int main()
 {
     //Initialisation of GLFW
@@ -90,6 +102,10 @@ int main()
         cout << "GLAD failed to initialise\n";
         return -1;
     }
+
+
+    //NEED THIS TO PROPERLY LOAD OBJECTS
+    glEnable(GL_DEPTH_TEST);
 
     //Loading of shaders
     Shader Shaders("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
@@ -125,13 +141,20 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        // Automatic forward movement (Temple Runner style)
+        cameraPosition.z -= forwardSpeed * deltaTime;
+
+        // Snap camera X position to current lane
+        cameraPosition.x = currentLane * laneWidth;
+
+
         //Input
         ProcessUserInput(window); //Takes user input
 
         //Rendering
         glClearColor(0.25f, 0.0f, 1.0f, 1.0f); //Colour to display on cleared window
         glClear(GL_COLOR_BUFFER_BIT); //Clears the colour buffer
-        glClear(GL_DEPTH_BUFFER_BIT); //Might need
+        glClear(GL_DEPTH_BUFFER_BIT); //Clears the depth buffer
 
         glEnable(GL_CULL_FACE); //Discards all back-facing triangles
 
@@ -213,23 +236,35 @@ void ProcessUserInput(GLFWwindow* WindowIn)
         glfwSetWindowShouldClose(WindowIn, true);
     }
 
+    static bool aPressedLastFrame = false;
+    static bool dPressedLastFrame = false;
+
     //Extent to which to move in one instance
     const float movementSpeed = 1.0f * deltaTime;
     //WASD controls
     if (glfwGetKey(WindowIn, GLFW_KEY_W) == GLFW_PRESS)
     {
-        cameraPosition += movementSpeed * cameraFront;
+        forwardSpeed += movementSpeed;
     }
     if (glfwGetKey(WindowIn, GLFW_KEY_S) == GLFW_PRESS)
     {
-        cameraPosition -= movementSpeed * cameraFront;
+        forwardSpeed -= movementSpeed;
     }
-    if (glfwGetKey(WindowIn, GLFW_KEY_A) == GLFW_PRESS)
+
+    //different input style to prevent jittery lane swapping
+    bool aPressed = glfwGetKey(WindowIn, GLFW_KEY_A) == GLFW_PRESS;
+    bool dPressed = glfwGetKey(WindowIn, GLFW_KEY_D) == GLFW_PRESS;
+
+    if (aPressed && !aPressedLastFrame && currentLane > -1)
     {
-        cameraPosition -= normalize(cross(cameraFront, cameraUp)) * movementSpeed;
+        currentLane--;
     }
-    if (glfwGetKey(WindowIn, GLFW_KEY_D) == GLFW_PRESS)
+
+    if (dPressed && !dPressedLastFrame && currentLane < 1)
     {
-        cameraPosition += normalize(cross(cameraFront, cameraUp)) * movementSpeed;
+        currentLane++;
     }
+
+    aPressedLastFrame = aPressed;
+    dPressedLastFrame = dPressed;
 }
