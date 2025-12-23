@@ -12,10 +12,13 @@ uniform mat4 mvpIn;
 //Texture to send
 out vec2 textureFrag;
 
+out vec3 FragPos;
+
 void main()
 {
     //Transformation applied to vertices
     gl_Position = mvpIn * vec4(position.x, position.y, position.z, 1.0);
     //Sending texture coordinates to next stage
     textureFrag = textureVertex;
+    FragPos = vec3(mvpIn * vec4(position, 1.0));
 }

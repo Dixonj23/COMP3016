@@ -78,6 +78,7 @@ float lastFrame = 0.0f;
 //skybox
 unsigned int skyboxVAO, skyboxVBO;
 
+
 #pragma endregion
 
 #pragma region game parameters
@@ -150,7 +151,10 @@ const float leftWallX = -(laneWidth * 1.55f) - (wallThickness);
 const float rightWallX = (laneWidth * 1.8f) - (wallThickness);
 
 
-
+// Fog settings
+vec3 fogColor = vec3(0.1f, 0.0f, 0.2f);
+float fogStart = 20.0f;
+float fogEnd = 60.0f + forwardSpeed * 0.5f;
 
 
 #pragma endregion
@@ -386,7 +390,7 @@ int main()
     glDisable(GL_CULL_FACE);
 
     //Loading of shaders
-    Shader Shaders("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
+    Shader objectShader("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
     Model Tile("media/tiles/castle/bridge-straight.obj");
     Model WallA("media/tiles/castle/wall.obj");
     Model WallB("media/tiles/castle/wall-doorway.obj");
@@ -394,7 +398,7 @@ int main()
     Model ObstacleA("media/obstacles/arena/column-damaged.obj");
     Model ObstacleB("media/obstacles/arena/bricks.obj");
     Model ObstacleC("media/obstacles/arena/statue.obj");
-    Shaders.use();
+    objectShader.use();
 
     //Skybox shaders
     Shader skyboxShader("shaders/skybox.vert", "shaders/skybox.frag");
@@ -537,7 +541,11 @@ int main()
         //Transformations
         mat4 view = lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp); //Sets the position of the viewer, the movement direction in relation to it & the world up direction
         
-        Shaders.use();
+        objectShader.use();
+        objectShader.setVec3("fogColor", fogColor);
+        objectShader.setFloat("fogStart", fogStart);
+        objectShader.setFloat("fogEnd", fogEnd);
+
 
         //Recycle obstacle positions individually
         for (int i = 0; i < activeObstacleCount; i++)
@@ -606,9 +614,9 @@ int main()
                 
 
                 mat4 tileMVP = projection * view * tileModel;
-                Shaders.setMat4("mvpIn", tileMVP);
+                objectShader.setMat4("mvpIn", tileMVP);
 
-                Tile.Draw(Shaders);
+                Tile.Draw(objectShader);
             }
         }
 
@@ -631,8 +639,8 @@ int main()
                 vec3(1.0f, wallHeight, wallSegmentLength));
 
             mat4 model = T * S;
-            Shaders.setMat4("mvpIn", projection * view * model);
-            wallModel->Draw(Shaders);
+            objectShader.setMat4("mvpIn", projection * view * model);
+            wallModel->Draw(objectShader);
 
             // RIGHT WALL 
             switch (rightWalls[i].modelIndex)
@@ -647,8 +655,8 @@ int main()
             mat4 R = mat4(1.0f);
             R = rotate(mat4(1.0f), radians(180.0f), vec3(0.0f, 1.0f, 0.0f));
             model = T * R * S;
-            Shaders.setMat4("mvpIn", projection * view * model);
-            wallModel->Draw(Shaders);
+            objectShader.setMat4("mvpIn", projection * view * model);
+            wallModel->Draw(objectShader);
         }
 
 
@@ -668,8 +676,8 @@ int main()
             mat4 S = scale(mat4(1.0f), vec3(2.0f));
             mat4 model = T * S;
 
-            Shaders.setMat4("mvpIn", projection * view * model);
-            obstacleModel->Draw(Shaders);
+            objectShader.setMat4("mvpIn", projection * view * model);
+            obstacleModel->Draw(objectShader);
         }
 
 
