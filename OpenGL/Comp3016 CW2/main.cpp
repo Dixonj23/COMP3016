@@ -17,6 +17,7 @@
 #include <learnopengl/shader_m.h>
 #include <learnopengl/model.h>
 
+
 //GENERAL
 #include "main.h"
 #include <ctime>
@@ -27,6 +28,11 @@
     just so i can remember what everything is/does. my apologies now for all the green text
 
 */
+
+#pragma region Setup parameters
+
+
+
 
 using namespace std;
 using namespace glm;
@@ -69,14 +75,43 @@ float deltaTime = 0.0f;
 //Last value of time change
 float lastFrame = 0.0f;
 
+//skybox
+unsigned int skyboxVAO, skyboxVBO;
+
+#pragma endregion
+
+#pragma region game parameters
+
+
 //Runner movement
 float forwardSpeed = 20.0f; 
 int currentLane = 0;          // -1 = left, 0 = centre, 1 = right
 const float laneWidth = 1.5f;
 
-//Obstacle (rock)
-vec3 rockPosition = vec3(0.0f, -1.0f, -15.0f);
-int rockLane = 0; // -1, 0, 1
+//Distance tracking
+float startZ = 0.0f;
+float distanceTravelled = 0.0f;
+
+//Difficulty Scaling
+const float baseSpeed = 12.0f;
+const float maxSpeed = 40.0f;
+
+const float SPEED_INCREASE_PER_METRE = 0.02f;
+
+const int baseObstacles = 2;
+const int maxObstacles = 6;
+
+int activeObstacleCount = baseObstacles;
+
+//Obstacle 
+struct Obstacle
+{
+    vec3 position;
+    int lane;        // -1, 0, 1
+    int modelIndex;  // 0, 1, 2
+};
+
+Obstacle obstacles[maxObstacles];
 
 // Collision 
 const float collisionZDistance = 1.5f;
@@ -85,19 +120,44 @@ const float collisionZDistance = 1.5f;
 const int NUM_LANES = 3;
 const int TILES_PER_LANE = 8;
 
-const float TILE_WORLD_LENGTH = 20.0f;
 const float TILE_RECYCLE_BEHIND = 30.0f;
-const float TILE_OVERLAP = 2.0f;
-
-float tileZ[NUM_LANES][TILES_PER_LANE] =
-{
-    { 0.0f, -TILE_WORLD_LENGTH },  // Left lane
-    { 0.0f, -TILE_WORLD_LENGTH },  // Centre lane
-    { 0.0f, -TILE_WORLD_LENGTH }   // Right lane
-};
+const float TILE_OVERLAP = 5.0f;
+float tileZ[NUM_LANES][TILES_PER_LANE];
+const float FIRST_TILE_OFFSET = 5.0f;
 
 const float tileLength = 20.0f;
 const float tileHeight = 1.0f;
+
+//Walls
+const float wallHeight = 3.0f;
+const float wallThickness = 0.2f;
+float wallZ[TILES_PER_LANE];
+const int WALL_SEGMENTS_PER_TILE = 10;
+const float wallSegmentLength = tileLength / WALL_SEGMENTS_PER_TILE;
+
+//wall segments
+struct WallSegment
+{
+    float z;
+    int modelIndex; // 0 = A, 1 = B, 2 = C
+};
+
+WallSegment leftWalls[TILES_PER_LANE * WALL_SEGMENTS_PER_TILE];
+WallSegment rightWalls[TILES_PER_LANE * WALL_SEGMENTS_PER_TILE];
+
+//Wall positions
+const float leftWallX = -(laneWidth * 1.55f) - (wallThickness);
+const float rightWallX = (laneWidth * 1.8f) - (wallThickness);
+
+
+
+
+
+#pragma endregion
+
+
+//Helper functions
+
 
 float GetFurthestTileZ(int lane)
 {
@@ -110,8 +170,111 @@ float GetFurthestTileZ(int lane)
     return furthest;
 }
 
+void ResetTiles()
+{
+    //reset Tiles
+    for (int lane = 0; lane < NUM_LANES; lane++)
+    {
+        // Place the first tile relative to the camera
+        tileZ[lane][0] = cameraPosition.z - FIRST_TILE_OFFSET;
+
+        // Chain the rest based on the previous tile
+        for (int i = 1; i < TILES_PER_LANE; i++)
+        {
+            tileZ[lane][i] = tileZ[lane][i - 1] - tileLength + TILE_OVERLAP;
+        }
+    }
+}
+
+void ResetWalls() {
+    int index = 0;
+
+    for (int tile = 0; tile < TILES_PER_LANE; tile++)
+    {
+        float baseZ = tileZ[0][tile];
+
+        for (int seg = 0; seg < WALL_SEGMENTS_PER_TILE; seg++)
+        {
+            float zPos = baseZ - (seg * wallSegmentLength);
+
+            leftWalls[index] = {
+                zPos,
+                rand() % 3
+            };
+
+            rightWalls[index] = {
+                zPos,
+                rand() % 3
+            };
+
+            index++;
+        }
+    }
+}
+
+void RespawnObstacle(int index)
+{
+    obstacles[index].lane = (rand() % 3) - 1;
+    obstacles[index].modelIndex = rand() % 3;
+
+    obstacles[index].position.x = obstacles[index].lane * laneWidth;
+    obstacles[index].position.y = -1.2f;
+
+    // Stagger obstacles so they don't overlap
+    obstacles[index].position.z =
+        cameraPosition.z - 40.0f - (index * 15.0f);
+}
+
+unsigned int LoadCubemap(std::vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char* data = stbi_load(
+            faces[i].c_str(), &width, &height, &nrChannels, 0);
+
+       // std::cout << faces[i] << " : " << width << "x" << height << " channels=" << nrChannels << std::endl;
+
+        if (data)
+        {
+            GLenum format = GL_RGB;
+            if (nrChannels == 4) format = GL_RGBA;
+            else if (nrChannels == 3) format = GL_RGB;
+            else if (nrChannels == 1) format = GL_RED;
+
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, format, width, height, 0,
+                format, GL_UNSIGNED_BYTE, data
+            );
+
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Failed to load cubemap face: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
+
 int main()
 {
+#pragma region GLFW
+
     srand((unsigned int)time(nullptr));
 
     //Initialisation of GLFW
@@ -119,7 +282,7 @@ int main()
     //Initialisation of 'GLFWwindow' object
     windowWidth = 1280;
     windowHeight = 720;
-    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Lab9", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Dungeon Escape", NULL, NULL);
 
     //Checks if window has been successfully instantiated
     if (window == NULL)
@@ -129,12 +292,19 @@ int main()
         return -1;
     }
 
-
     //Sets cursor to automatically bind to window & hides cursor pointer
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     //Binds OpenGL to window
     glfwMakeContextCurrent(window);
+
+    
+
+#pragma endregion
+
+
+#pragma region GLAD
+
 
     //Initialisation of GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -143,15 +313,108 @@ int main()
         return -1;
     }
 
+#pragma endregion
+
+#pragma region skybox setup
+    float skyboxVertices[] = {
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f
+    };
+
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices),
+        &skyboxVertices, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+        3 * sizeof(float), (void*)0);
+
+
+
+#pragma endregion
+
+#pragma region Initial Setup
+
+
 
     //NEED THIS TO PROPERLY LOAD OBJECTS
     glEnable(GL_DEPTH_TEST);
 
+    glDisable(GL_CULL_FACE);
+
     //Loading of shaders
     Shader Shaders("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
-    Model Rock("media/rock/Rock07-Base.obj");
-    Model Tile("media/tiles/bridge-straight.obj");
+    Model Tile("media/tiles/castle/bridge-straight.obj");
+    Model WallA("media/tiles/castle/wall.obj");
+    Model WallB("media/tiles/castle/wall-doorway.obj");
+    Model WallC("media/tiles/castle/wall-narrow-wood.obj");
+    Model ObstacleA("media/obstacles/arena/column-damaged.obj");
+    Model ObstacleB("media/obstacles/arena/bricks.obj");
+    Model ObstacleC("media/obstacles/arena/statue.obj");
     Shaders.use();
+
+    //Skybox shaders
+    Shader skyboxShader("shaders/skybox.vert", "shaders/skybox.frag");
+
+    std::vector<std::string> skyboxFaces =
+    {
+        "media/skybox/right.jpg",
+        "media/skybox/left.jpg",
+        "media/skybox/top.jpg",
+        "media/skybox/bottom.jpg",
+        "media/skybox/front.jpg",
+        "media/skybox/back.jpg"
+    };
+
+    unsigned int cubemapTexture = LoadCubemap(skyboxFaces);
+
+    skyboxShader.use();
+    skyboxShader.setInt("skybox", 0);
+
+   // std::cout << "Skybox shader ID: " << skyboxShader.ID << std::endl;
 
     //Sets the viewport size within the window to match the window size of 1280x720
     glViewport(0, 0, 1280, 720);
@@ -165,10 +428,26 @@ int main()
 
     //Projection matrix
     mat4 projection = perspective(radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+#pragma endregion
+
+    //Distance tracking defaulkts
+    startZ = cameraPosition.z;
+    distanceTravelled = 0.0f;
+
+    //inital spawns
+    ResetTiles();
+    ResetWalls();
+    for (int i = 0; i < activeObstacleCount; i++)
+    {
+        RespawnObstacle(i);
+    }
 
     //Render loop
     while (glfwWindowShouldClose(window) == false)
     {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
         //Time
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -180,32 +459,72 @@ int main()
         // Snap camera X position to current lane
         cameraPosition.x = currentLane * laneWidth;
 
-        //Obstacle position resets
-        rockPosition.x = rockLane * laneWidth;
 
-        //Model matrix
-        mat4 model = mat4(1.0f);
-        //Model position
-        model = translate(model, rockPosition);
-        //Scaling to zoom in
-        model = scale(model, vec3(0.025f));
+        //track distance travvelled
+        distanceTravelled = startZ - cameraPosition.z;
+
+        // Scale speed with distance
+        forwardSpeed = baseSpeed + distanceTravelled * SPEED_INCREASE_PER_METRE;
+        forwardSpeed = glm::clamp(forwardSpeed, baseSpeed, maxSpeed);
+
+        //scale obstacles with distance
+        const float DISTANCE_PER_OBSTACLE = 60.0f;
+
+        int desiredObstacleCount =
+            baseObstacles + static_cast<int>(distanceTravelled / DISTANCE_PER_OBSTACLE);
+
+        activeObstacleCount = glm::clamp(
+            desiredObstacleCount,
+            baseObstacles,
+            maxObstacles
+        );
+
 
         // Collision check
-        bool sameLane = (currentLane == rockLane);
-        bool closeEnoughZ = abs(rockPosition.z - cameraPosition.z) < collisionZDistance;
-
-        if (sameLane && closeEnoughZ)
+        for (int i = 0; i < activeObstacleCount; i++)
         {
-            // Reset player and obstacle
-            cameraPosition.z = 0.0f;
-            rockPosition.z = -15.0f;
-            rockLane = (rand() % 3) - 1;
+            bool sameLane = (currentLane == obstacles[i].lane);
+            bool closeEnoughZ =
+                abs(obstacles[i].position.z - cameraPosition.z) < collisionZDistance;
 
-            std::cout << "Collision!" << std::endl;
+            if (sameLane && closeEnoughZ)
+            {
+                // Reset player
+                cameraPosition.z = 0.0f;
+                currentLane = 0;
+                forwardSpeed = baseSpeed;
+                startZ = cameraPosition.z;
+                distanceTravelled = 0.0f;
+
+                //Reset obstacles
+                activeObstacleCount = baseObstacles;
+                RespawnObstacle(i);
+
+                //Reset world
+                ResetTiles();
+                ResetWalls();
+
+
+                std::cout << "Collision!" << std::endl;
+            }
         }
+        
 
         //Input
         ProcessUserInput(window); //Takes user input
+
+        //UI
+        static float titleUpdateTimer = 0.0f;
+        titleUpdateTimer += deltaTime;
+
+        if (titleUpdateTimer > 0.25f)
+        {
+            std::string title = "Dungeon Escape | Distance: " +
+                std::to_string((int)distanceTravelled) + " m";
+
+            glfwSetWindowTitle(window, title.c_str());
+            titleUpdateTimer = 0.0f;
+        }
 
         //Rendering
         glClearColor(0.25f, 0.0f, 1.0f, 1.0f); //Colour to display on cleared window
@@ -214,23 +533,22 @@ int main()
 
         glEnable(GL_CULL_FACE); //Discards all back-facing triangles
 
+
         //Transformations
         mat4 view = lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp); //Sets the position of the viewer, the movement direction in relation to it & the world up direction
-        mat4 mvp = projection * view * model;
-        Shaders.setMat4("mvpIn", mvp); //Setting of uniform with Shader class
+        
+        Shaders.use();
 
-        //Obstacle Positioning
-        if (rockPosition.z > cameraPosition.z)
+        //Recycle obstacle positions individually
+        for (int i = 0; i < activeObstacleCount; i++)
         {
-            rockPosition.z = cameraPosition.z - 40.0f;
-
-            // Randomise lane
-            rockLane = (rand() % 3) - 1; // -1, 0, 1
+            if (obstacles[i].position.z > cameraPosition.z + TILE_RECYCLE_BEHIND)
+            {
+                RespawnObstacle(i);
+            }
         }
-
-       // std::cout << "Camera Z: " << cameraPosition.z << " Rock Z: " << rockPosition.z << std::endl;
-
-        //update floor positions
+        
+        //recycle tile positions
         for (int lane = 0; lane < NUM_LANES; lane++)
         {
             for (int i = 0; i < TILES_PER_LANE; i++)
@@ -238,18 +556,39 @@ int main()
                 if (tileZ[lane][i] > cameraPosition.z + TILE_RECYCLE_BEHIND)
                 {
                     float furthestZ = GetFurthestTileZ(lane);
-                    tileZ[lane][i] = (furthestZ + TILE_OVERLAP) - TILE_WORLD_LENGTH;
+                    tileZ[lane][i] = furthestZ - (tileLength - TILE_OVERLAP);
+                    //std::cout << "tile pos:" <<tileZ[lane][i] <<  std::endl;
                 }
             }
         }
 
-        //Drawing
+        //recycle wall positions
+        for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
+        {
+            if (leftWalls[i].z > cameraPosition.z + TILE_RECYCLE_BEHIND)
+            {
+                // Find furthest wall segment
+                float furthestZ = leftWalls[0].z;
+                for (int j = 1; j < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; j++)
+                    furthestZ = std::min(furthestZ, leftWalls[j].z);
+
+                leftWalls[i].z = furthestZ - wallSegmentLength;
+                rightWalls[i].z = furthestZ - wallSegmentLength;
+
+                leftWalls[i].modelIndex = rand() % 3;
+                rightWalls[i].modelIndex = rand() % 3;
+            }
+        }
+        
+
+        //Drawing Tiles
         for (int lane = 0; lane < NUM_LANES; lane++)
         {
             float laneX = (lane - 1) * laneWidth; // -1, 0, +1
 
             for (int i = 0; i < TILES_PER_LANE; i++)
             {
+
                 mat4 tileModel = mat4(1.0f);
 
                 mat4 T = translate(mat4(1.0f), vec3(laneX, -2.5f, tileZ[lane][i]));
@@ -258,7 +597,7 @@ int main()
 
                  R = rotate(mat4(1.0f), radians(90.0f), vec3(0.0f, 1.0f, 0.0f));
 
-                mat4 S = scale(mat4(1.0f), vec3(TILE_WORLD_LENGTH, tileHeight, laneWidth * 0.9f));
+                mat4 S = scale(mat4(1.0f), vec3(tileLength, tileHeight, laneWidth * 0.9f));
 
                 // World-space translation 
                 tileModel = T * R * S;
@@ -273,13 +612,91 @@ int main()
             }
         }
 
+        //Drawing Walls
+        for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
+        {
+            Model* wallModel = nullptr;
 
-        mat4 rockModel = mat4(1.0f);
-        rockModel = translate(rockModel, rockPosition);
-        rockModel = scale(rockModel, vec3(0.025f));
+            // LEFT WALL
+            switch (leftWalls[i].modelIndex)
+            {
+            case 0: wallModel = &WallA; break;
+            case 1: wallModel = &WallB; break;
+            case 2: wallModel = &WallC; break;
+            }
 
-        Shaders.setMat4("mvpIn", projection * view * rockModel);
-        Rock.Draw(Shaders);
+            mat4 T = translate(mat4(1.0f),
+                vec3(leftWallX, -wallHeight * 0.6f, leftWalls[i].z));
+            mat4 S = scale(mat4(1.0f),
+                vec3(1.0f, wallHeight, wallSegmentLength));
+
+            mat4 model = T * S;
+            Shaders.setMat4("mvpIn", projection * view * model);
+            wallModel->Draw(Shaders);
+
+            // RIGHT WALL 
+            switch (rightWalls[i].modelIndex)
+            {
+            case 0: wallModel = &WallA; break;
+            case 1: wallModel = &WallB; break;
+            case 2: wallModel = &WallC; break;
+            }
+
+            T = translate(mat4(1.0f),
+                vec3(rightWallX, -wallHeight * 0.6f, rightWalls[i].z));
+            mat4 R = mat4(1.0f);
+            R = rotate(mat4(1.0f), radians(180.0f), vec3(0.0f, 1.0f, 0.0f));
+            model = T * R * S;
+            Shaders.setMat4("mvpIn", projection * view * model);
+            wallModel->Draw(Shaders);
+        }
+
+
+        //Drawing Obstacles
+        for (int i = 0; i < activeObstacleCount; i++)
+        {
+            Model* obstacleModel = nullptr;
+
+            switch (obstacles[i].modelIndex)
+            {
+            case 0: obstacleModel = &ObstacleA; break;
+            case 1: obstacleModel = &ObstacleB; break;
+            case 2: obstacleModel = &ObstacleC; break;
+            }
+
+            mat4 T = translate(mat4(1.0f), obstacles[i].position);
+            mat4 S = scale(mat4(1.0f), vec3(2.0f));
+            mat4 model = T * S;
+
+            Shaders.setMat4("mvpIn", projection * view * model);
+            obstacleModel->Draw(Shaders);
+        }
+
+
+        //Drawing Skybox
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);    
+        glDisable(GL_CULL_FACE);
+
+        skyboxShader.use();
+
+        // Remove translation from view matrix
+        mat4 skyView = mat4(mat3(view));
+        skyboxShader.setMat4("view", skyView);
+        skyboxShader.setMat4("projection", projection);
+
+        glBindVertexArray(skyboxVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        glBindVertexArray(0);
+        glActiveTexture(GL_TEXTURE0);
+
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
 
         //Refreshing
         glfwSwapBuffers(window); //Swaps the colour buffer
