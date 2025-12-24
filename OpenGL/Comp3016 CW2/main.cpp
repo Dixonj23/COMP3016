@@ -164,6 +164,20 @@ float wallZ[TILES_PER_LANE];
 const int WALL_SEGMENTS_PER_TILE = 10;
 const float wallSegmentLength = tileLength / WALL_SEGMENTS_PER_TILE;
 
+// Lighting attached to walls
+const int MAX_WALL_LIGHTS = 16;
+const float WALL_LIGHT_SPACING = 8.0f; // minimum Z distance between lights
+
+struct WallLight
+{
+    vec3 position;
+    vec3 color;
+    float intensity;
+};
+
+WallLight wallLights[MAX_WALL_LIGHTS];
+int activeWallLights = 0;
+
 //wall segments
 struct WallSegment
 {
@@ -177,6 +191,8 @@ WallSegment rightWalls[TILES_PER_LANE * WALL_SEGMENTS_PER_TILE];
 //Wall positions
 const float leftWallX = -(laneWidth * 1.55f) - (wallThickness);
 const float rightWallX = (laneWidth * 1.8f) - (wallThickness);
+
+//lighting/torches
 
 
 // Fog settings
@@ -243,6 +259,7 @@ void ResetWalls() {
         }
     }
 }
+
 
 void RespawnObstacle(int index)
 {
@@ -460,6 +477,7 @@ int main()
     //Loading of shaders
     Shader objectShader("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
     Model Tile("media/tiles/castle/bridge-straight.obj");
+    Model TorchModel("media/torch/wall torch.obj");
     Model WallA("media/tiles/castle/wall.obj");
     Model WallB("media/tiles/castle/wall-doorway.obj");
     Model WallC("media/tiles/castle/wall-narrow-wood.obj");
@@ -507,6 +525,7 @@ int main()
     startZ = cameraPosition.z;
     distanceTravelled = 0.0f;
 
+
     //inital spawns
     ResetTiles();
     ResetWalls();
@@ -537,7 +556,7 @@ int main()
             isGrounded = true;
         }
 
-        // Automatic forward movement (Temple Runner style)
+        // Automatic forward movement 
         cameraPosition.z -= forwardSpeed * deltaTime;
 
         //toggle crouch
@@ -613,6 +632,7 @@ int main()
                 //Reset world
                 ResetTiles();
                 ResetWalls();
+                //ResetTorches();
 
 
                 std::cout << "Collision!" << std::endl;
@@ -646,12 +666,31 @@ int main()
 
         //Transformations
         mat4 view = lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp); //Sets the position of the viewer, the movement direction in relation to it & the world up direction
-        
+        mat4 model = mat4(1.0f);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
         objectShader.use();
+        objectShader.setVec3("viewPos", cameraPosition);
+        objectShader.setMat4("view", view);
+        objectShader.setMat4("projection", projection);
+
         objectShader.setVec3("fogColor", fogColor);
         objectShader.setFloat("fogStart", fogStart);
         objectShader.setFloat("fogEnd", fogEnd);
 
+
+        objectShader.setInt("numLights", activeWallLights);
+
+        for (int i = 0; i < activeWallLights; i++)
+        {
+            std::string base = "lights[" + std::to_string(i) + "]";
+            objectShader.setVec3(base + ".position", wallLights[i].position);
+            objectShader.setVec3(base + ".color", wallLights[i].color);
+            objectShader.setFloat(base + ".intensity", wallLights[i].intensity);
+        }
+        
 
         //Recycle obstacle positions individually
         for (int i = 0; i < activeObstacleCount; i++)
@@ -694,6 +733,55 @@ int main()
             }
         }
         
+      
+        activeWallLights = 0;
+        float lastLightZ = 99999.0f;
+
+        // LEFT WALLS
+        for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
+        {
+            if (leftWalls[i].modelIndex == 0)
+            {
+                float z = leftWalls[i].z;
+
+                // spacing + limit
+                if (abs(z - lastLightZ) > WALL_LIGHT_SPACING &&
+                    activeWallLights < MAX_WALL_LIGHTS)
+                {
+                    wallLights[activeWallLights++] =
+                    {
+                        vec3(leftWallX + 0.5f, 0.0f, z),
+                        vec3(1.0f, 0.7f, 0.3f), // warm torch colour
+                        1.3f
+                    };
+
+                    lastLightZ = z;
+                }
+            }
+        }
+
+        // RIGHT WALLS
+        for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
+        {
+            if (rightWalls[i].modelIndex == 0)
+            {
+                float z = rightWalls[i].z;
+
+                if (abs(z - lastLightZ) > WALL_LIGHT_SPACING &&
+                    activeWallLights < MAX_WALL_LIGHTS)
+                {
+                    wallLights[activeWallLights++] =
+                    {
+                        vec3(rightWallX - 0.5f, 0.0f, z),
+                        vec3(1.0f, 0.7f, 0.3f),
+                        1.3f
+                    };
+
+                    lastLightZ = z;
+                }
+            }
+        }
+
 
         //Drawing Tiles
         for (int lane = 0; lane < NUM_LANES; lane++)
@@ -716,11 +804,9 @@ int main()
                 // World-space translation 
                 tileModel = T * R * S;
 
-
-                
-
                 mat4 tileMVP = projection * view * tileModel;
                 objectShader.setMat4("mvpIn", tileMVP);
+                objectShader.setMat4("model", tileModel);
 
                 Tile.Draw(objectShader);
             }
@@ -746,6 +832,7 @@ int main()
 
             mat4 model = T * S;
             objectShader.setMat4("mvpIn", projection * view * model);
+            objectShader.setMat4("model", model);
             wallModel->Draw(objectShader);
 
             // RIGHT WALL 
@@ -762,8 +849,10 @@ int main()
             R = rotate(mat4(1.0f), radians(180.0f), vec3(0.0f, 1.0f, 0.0f));
             model = T * R * S;
             objectShader.setMat4("mvpIn", projection * view * model);
+            objectShader.setMat4("model", model);
             wallModel->Draw(objectShader);
         }
+
 
 
         //Drawing Obstacles
@@ -787,6 +876,7 @@ int main()
             mat4 model = T * R * S;
 
             objectShader.setMat4("mvpIn", projection * view * model);
+            objectShader.setMat4("model", model);
             obstacleModel->Draw(objectShader);
         }
 
