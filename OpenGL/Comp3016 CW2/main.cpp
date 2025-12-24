@@ -89,6 +89,20 @@ float forwardSpeed = 20.0f;
 int currentLane = 0;          // -1 = left, 0 = centre, 1 = right
 const float laneWidth = 1.5f;
 
+//Vertical movement
+float playerBaseY = 0.0f;
+float playerY = 0.0f;
+float verticalVelocity = 0.0f;
+
+//states
+bool isGrounded = true;
+bool isCrouching = false;
+
+//jump/crouch
+const float jumpForce = 7.5f;
+const float gravity = 18.0f;
+const float crouchOffset = -0.6f;
+
 //Distance tracking
 float startZ = 0.0f;
 float distanceTravelled = 0.0f;
@@ -105,13 +119,27 @@ const int maxObstacles = 6;
 int activeObstacleCount = baseObstacles;
 
 //Obstacle 
+enum ObstacleType
+{
+    Low, //Jump over
+    Overhead, //Crouch under
+    Normal //Switch lane
+};
+
 struct Obstacle
 {
     vec3 position;
     int lane;        // -1, 0, 1
     int modelIndex;  // 0, 1, 2
+    ObstacleType type;
+
+    vec3 rotationAxis;
+    float rotationAngle;
+
+    vec3 scale;
 };
 
+const float obstacleSpawnDistance = 80.0f;
 Obstacle obstacles[maxObstacles];
 
 // Collision 
@@ -219,14 +247,54 @@ void ResetWalls() {
 void RespawnObstacle(int index)
 {
     obstacles[index].lane = (rand() % 3) - 1;
-    obstacles[index].modelIndex = rand() % 3;
+    obstacles[index].modelIndex = rand() % 4;
 
     obstacles[index].position.x = obstacles[index].lane * laneWidth;
     obstacles[index].position.y = -1.2f;
 
+    switch (obstacles[index].modelIndex)
+    {
+    case 0:
+        obstacles[index].type = Low;     
+        break;
+
+    case 1:
+        obstacles[index].type = Overhead; 
+        break;
+
+    case 2:
+        obstacles[index].type = Normal;   
+        break;
+    case 3:
+        obstacles[index].type = Normal;   
+        break;
+    }
+
+    switch (obstacles[index].type)
+    {
+    case Low:
+        obstacles[index].rotationAxis = vec3(0.0f, 1.0f, 0.0f);
+        obstacles[index].rotationAngle = 0.0f;
+        obstacles[index].scale = vec3(2.0f, 2.0f, 2.0f);
+        break;
+
+    case Overhead:
+        obstacles[index].rotationAxis = vec3(0.0f, 1.0f, 0.0f);
+        obstacles[index].rotationAngle = 90.0f;
+        obstacles[index].scale = vec3(2.0f, 3.0f, 2.0f);
+        break;
+
+    case Normal:
+        obstacles[index].rotationAxis = vec3(0.0f, 1.0f, 0.0f);
+        obstacles[index].rotationAngle = 0.0f;
+        obstacles[index].scale = vec3(2.0f, 2.0f, 2.0f);
+        break;
+    }
+
+
     // Stagger obstacles so they don't overlap
     obstacles[index].position.z =
-        cameraPosition.z - 40.0f - (index * 15.0f);
+        cameraPosition.z - obstacleSpawnDistance - (index * 20.0f);
 }
 
 unsigned int LoadCubemap(std::vector<std::string> faces)
@@ -395,9 +463,10 @@ int main()
     Model WallA("media/tiles/castle/wall.obj");
     Model WallB("media/tiles/castle/wall-doorway.obj");
     Model WallC("media/tiles/castle/wall-narrow-wood.obj");
-    Model ObstacleA("media/obstacles/arena/column-damaged.obj");
-    Model ObstacleB("media/obstacles/arena/bricks.obj");
-    Model ObstacleC("media/obstacles/arena/statue.obj");
+    Model ObstacleA("media/obstacles/arena/bricks.obj"); //Low
+    Model ObstacleB("media/obstacles/castle/flag-wide.obj"); // Overhead
+    Model ObstacleC("media/obstacles/arena/column-damaged.obj"); // Normal
+    Model ObstacleD("media/obstacles/arena/statue.obj"); // Normal
     objectShader.use();
 
     //Skybox shaders
@@ -457,8 +526,22 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        //gravity
+        verticalVelocity -= gravity * deltaTime;
+        playerY += verticalVelocity * deltaTime;
+
+        //ground collision
+        if (playerY <= playerBaseY) {
+            playerY = playerBaseY;
+            verticalVelocity = 0.0f;
+            isGrounded = true;
+        }
+
         // Automatic forward movement (Temple Runner style)
         cameraPosition.z -= forwardSpeed * deltaTime;
+
+        //toggle crouch
+        cameraPosition.y = playerY + (isCrouching ? crouchOffset : 0.0f);
 
         // Snap camera X position to current lane
         cameraPosition.x = currentLane * laneWidth;
@@ -491,8 +574,31 @@ int main()
             bool closeEnoughZ =
                 abs(obstacles[i].position.z - cameraPosition.z) < collisionZDistance;
 
+            bool collision = false;
+
+            //vertical clearance
             if (sameLane && closeEnoughZ)
             {
+                switch (obstacles[i].type)
+                {
+                case Low:
+                    // Must jump
+                    collision = (playerY < 1.0f);
+                    break;
+
+                case Overhead:
+                    // Must crouch
+                    collision = (!isCrouching);
+                    break;
+
+                case Normal:
+                    // Always collide
+                    collision = true;
+                    break;
+                }
+            }
+
+            if (collision) {
                 // Reset player
                 cameraPosition.z = 0.0f;
                 currentLane = 0;
@@ -670,11 +776,15 @@ int main()
             case 0: obstacleModel = &ObstacleA; break;
             case 1: obstacleModel = &ObstacleB; break;
             case 2: obstacleModel = &ObstacleC; break;
+            case 3: obstacleModel = &ObstacleD; break;
             }
 
             mat4 T = translate(mat4(1.0f), obstacles[i].position);
-            mat4 S = scale(mat4(1.0f), vec3(2.0f));
-            mat4 model = T * S;
+            mat4 R = rotate(mat4(1.0f),
+                radians(obstacles[i].rotationAngle),
+                obstacles[i].rotationAxis);
+            mat4 S = scale(mat4(1.0f), obstacles[i].scale);
+            mat4 model = T * R * S;
 
             objectShader.setMat4("mvpIn", projection * view * model);
             obstacleModel->Draw(objectShader);
@@ -776,24 +886,33 @@ void ProcessUserInput(GLFWwindow* WindowIn)
         glfwSetWindowShouldClose(WindowIn, true);
     }
 
+    static bool wPressedLastFrame = false;
     static bool aPressedLastFrame = false;
     static bool dPressedLastFrame = false;
 
-    //Extent to which to move in one instance
-    const float movementSpeed = 1.0f * deltaTime;
-    //WASD controls
-    if (glfwGetKey(WindowIn, GLFW_KEY_W) == GLFW_PRESS)
-    {
-        forwardSpeed += movementSpeed;
-    }
-    if (glfwGetKey(WindowIn, GLFW_KEY_S) == GLFW_PRESS)
-    {
-        forwardSpeed -= movementSpeed;
-    }
-
-    //different input style to prevent jittery lane swapping
+    //different input style to prevent jitter
+    bool wPressed = glfwGetKey(WindowIn, GLFW_KEY_W) == GLFW_PRESS;
     bool aPressed = glfwGetKey(WindowIn, GLFW_KEY_A) == GLFW_PRESS;
     bool dPressed = glfwGetKey(WindowIn, GLFW_KEY_D) == GLFW_PRESS;
+
+
+
+    //WASD controls
+
+    if (wPressed && !wPressedLastFrame && isGrounded)
+    {
+        verticalVelocity = jumpForce;
+        isGrounded = false;
+    }
+   
+    if (glfwGetKey(WindowIn, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        isCrouching = true;
+    }
+    else {
+        isCrouching = false;
+    }
+
 
     if (aPressed && !aPressedLastFrame && currentLane > -1)
     {
@@ -805,6 +924,9 @@ void ProcessUserInput(GLFWwindow* WindowIn)
         currentLane++;
     }
 
+    wPressedLastFrame = wPressed;
     aPressedLastFrame = aPressed;
     dPressedLastFrame = dPressed;
+
+
 }
