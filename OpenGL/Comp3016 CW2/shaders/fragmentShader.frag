@@ -53,7 +53,7 @@ void main()
         vec3 specular = spec * lights[i].color;
 
         float dist = length(lights[i].position - FragPos);
-        float radius = 14.0; 
+        float radius = 18.0; 
         float attenuation = clamp(1.0 - (dist / radius), 0.0, 1.0);
         attenuation *= attenuation; 
 

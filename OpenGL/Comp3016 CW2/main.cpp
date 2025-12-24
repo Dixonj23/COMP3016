@@ -183,6 +183,7 @@ struct WallSegment
 {
     float z;
     int modelIndex; // 0 = A, 1 = B, 2 = C
+    bool hasLight;
 };
 
 WallSegment leftWalls[TILES_PER_LANE * WALL_SEGMENTS_PER_TILE];
@@ -191,8 +192,6 @@ WallSegment rightWalls[TILES_PER_LANE * WALL_SEGMENTS_PER_TILE];
 //Wall positions
 const float leftWallX = -(laneWidth * 1.55f) - (wallThickness);
 const float rightWallX = (laneWidth * 1.8f) - (wallThickness);
-
-//lighting/torches
 
 
 // Fog settings
@@ -247,13 +246,21 @@ void ResetWalls() {
 
             leftWalls[index] = {
                 zPos,
-                rand() % 3
+                rand() % 3,
+                false
             };
 
             rightWalls[index] = {
                 zPos,
-                rand() % 3
+                rand() % 3,
+                false
             };
+
+            if (leftWalls[index].modelIndex == 0 && rand() % 3 == 0)
+                leftWalls[index].hasLight = true;
+
+            if (rightWalls[index].modelIndex == 0 && rand() % 3 == 0)
+                rightWalls[index].hasLight = true;
 
             index++;
         }
@@ -730,56 +737,61 @@ int main()
 
                 leftWalls[i].modelIndex = rand() % 3;
                 rightWalls[i].modelIndex = rand() % 3;
+
+                leftWalls[i].hasLight = false;
+                rightWalls[i].hasLight = false;
+
+                if (leftWalls[i].modelIndex == 0 && rand() % 3 == 0)
+                    leftWalls[i].hasLight = true;
+
+                if (rightWalls[i].modelIndex == 0 && rand() % 3 == 0)
+                    rightWalls[i].hasLight = true;
             }
         }
         
       
         activeWallLights = 0;
-        float lastLightZ = 99999.0f;
+        float lastLeftLightZ = 99999.0f;
+        float lastRightLightZ = 99999.0f;
 
         // LEFT WALLS
+        
         for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
         {
-            if (leftWalls[i].modelIndex == 0)
+            if (leftWalls[i].hasLight &&
+                abs(leftWalls[i].z - lastLeftLightZ) > WALL_LIGHT_SPACING &&
+                activeWallLights < MAX_WALL_LIGHTS)
             {
-                float z = leftWalls[i].z;
-
-                // spacing + limit
-                if (abs(z - lastLightZ) > WALL_LIGHT_SPACING &&
-                    activeWallLights < MAX_WALL_LIGHTS)
+                wallLights[activeWallLights++] =
                 {
-                    wallLights[activeWallLights++] =
-                    {
-                        vec3(leftWallX + 0.5f, 0.0f, z),
-                        vec3(1.0f, 0.7f, 0.3f), // warm torch colour
-                        1.3f
-                    };
+                    vec3(leftWallX + 1.0f, 0.0f, leftWalls[i].z),
+                    vec3(1.0f, 0.7f, 0.3f),
+                    1.0f
+                };
 
-                    lastLightZ = z;
-                }
+                lastLeftLightZ = leftWalls[i].z;
             }
+
         }
+        
 
         // RIGHT WALLS
         for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
         {
-            if (rightWalls[i].modelIndex == 0)
+            if (rightWalls[i].hasLight &&
+                abs(rightWalls[i].z - lastRightLightZ) > WALL_LIGHT_SPACING &&
+                activeWallLights < MAX_WALL_LIGHTS)
             {
-                float z = rightWalls[i].z;
-
-                if (abs(z - lastLightZ) > WALL_LIGHT_SPACING &&
-                    activeWallLights < MAX_WALL_LIGHTS)
+                wallLights[activeWallLights++] =
                 {
-                    wallLights[activeWallLights++] =
-                    {
-                        vec3(rightWallX - 0.5f, 0.0f, z),
-                        vec3(1.0f, 0.7f, 0.3f),
-                        1.3f
-                    };
+                    vec3(rightWallX - 1.0f, 0.0f, rightWalls[i].z),
+                    vec3(1.0f, 0.7f, 0.3f),
+                    1.0f
+                };
 
-                    lastLightZ = z;
-                }
+                lastRightLightZ = rightWalls[i].z;
             }
+
         }
 
 
