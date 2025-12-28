@@ -165,14 +165,15 @@ const int WALL_SEGMENTS_PER_TILE = 10;
 const float wallSegmentLength = tileLength / WALL_SEGMENTS_PER_TILE;
 
 // Lighting attached to walls
-const int MAX_WALL_LIGHTS = 16;
-const float WALL_LIGHT_SPACING = 8.0f; // minimum Z distance between lights
+const int MAX_WALL_LIGHTS = 20;
+const float WALL_LIGHT_SPACING = 10.0f; // minimum Z distance between lights
 
 struct WallLight
 {
     vec3 position;
     vec3 color;
     float intensity;
+    bool isLeftWall;
 };
 
 WallLight wallLights[MAX_WALL_LIGHTS];
@@ -198,6 +199,19 @@ const float rightWallX = (laneWidth * 1.8f) - (wallThickness);
 vec3 fogColor = vec3(0.1f, 0.0f, 0.2f);
 float fogStart = 20.0f;
 float fogEnd = 60.0f + forwardSpeed * 0.5f;
+
+
+// Ground
+const int GROUND_ROWS = 20;   // forward/back
+const int GROUND_COLS = 20;   // left/right
+
+const float GROUND_TILE_SIZE = 10.0f;
+const float GROUND_Y = -3.2f;
+
+int groundType[GROUND_ROWS][GROUND_COLS]; // 0 = flat, 1 = hills
+
+const int GROUND_SEGMENTS = TILES_PER_LANE;
+float groundZ[GROUND_SEGMENTS];
 
 
 #pragma endregion
@@ -267,14 +281,13 @@ void ResetWalls() {
     }
 }
 
-
 void RespawnObstacle(int index)
 {
     obstacles[index].lane = (rand() % 3) - 1;
     obstacles[index].modelIndex = rand() % 4;
 
     obstacles[index].position.x = obstacles[index].lane * laneWidth;
-    obstacles[index].position.y = -1.2f;
+    obstacles[index].position.y = -1.3f;
 
     switch (obstacles[index].modelIndex)
     {
@@ -366,6 +379,16 @@ unsigned int LoadCubemap(std::vector<std::string> faces)
     return textureID;
 }
 
+void InitGroundBoard()
+{
+    for (int z = 0; z < GROUND_ROWS; z++)
+    {
+        for (int x = 0; x < GROUND_COLS; x++)
+        {
+            groundType[z][x] = rand() % 2;
+        }
+    }
+}
 
 int main()
 {
@@ -492,6 +515,9 @@ int main()
     Model ObstacleB("media/obstacles/castle/flag-wide.obj"); // Overhead
     Model ObstacleC("media/obstacles/arena/column-damaged.obj"); // Normal
     Model ObstacleD("media/obstacles/arena/statue.obj"); // Normal
+    Model GroundFlat("media/ground/ground.obj");
+    Model GroundHills("media/ground/ground-hills.obj");
+    Model WallTorch("media/torch/wall torch.obj");
     objectShader.use();
 
     //Skybox shaders
@@ -536,6 +562,7 @@ int main()
     //inital spawns
     ResetTiles();
     ResetWalls();
+    InitGroundBoard();
     for (int i = 0; i < activeObstacleCount; i++)
     {
         RespawnObstacle(i);
@@ -728,12 +755,17 @@ int main()
             if (leftWalls[i].z > cameraPosition.z + TILE_RECYCLE_BEHIND)
             {
                 // Find furthest wall segment
-                float furthestZ = leftWalls[0].z;
-                for (int j = 1; j < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; j++)
-                    furthestZ = std::min(furthestZ, leftWalls[j].z);
+                float furthestLeftZ = leftWalls[0].z;
+                float furthestRightZ = rightWalls[0].z;
 
-                leftWalls[i].z = furthestZ - wallSegmentLength;
-                rightWalls[i].z = furthestZ - wallSegmentLength;
+                for (int j = 1; j < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; j++)
+                {
+                    furthestLeftZ = std::min(furthestLeftZ, leftWalls[j].z);
+                    furthestRightZ = std::min(furthestRightZ, rightWalls[j].z);
+                }
+
+                leftWalls[i].z = furthestLeftZ - wallSegmentLength;
+                rightWalls[i].z = furthestRightZ - wallSegmentLength;
 
                 leftWalls[i].modelIndex = rand() % 3;
                 rightWalls[i].modelIndex = rand() % 3;
@@ -754,46 +786,86 @@ int main()
         float lastLeftLightZ = 99999.0f;
         float lastRightLightZ = 99999.0f;
 
-        // LEFT WALLS
-        
+        //building lights
+        std::vector<WallLight> candidates;
+
+        //left walls
         for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
         {
-            if (leftWalls[i].hasLight &&
-                abs(leftWalls[i].z - lastLeftLightZ) > WALL_LIGHT_SPACING &&
-                activeWallLights < MAX_WALL_LIGHTS)
+            if (leftWalls[i].hasLight)
             {
-                wallLights[activeWallLights++] =
-                {
-                    vec3(leftWallX + 1.0f, 0.0f, leftWalls[i].z),
+                candidates.push_back({
+                    vec3(leftWallX + 0.6f, 0.0f, leftWalls[i].z),
                     vec3(1.0f, 0.7f, 0.3f),
-                    1.0f
-                };
-
-                lastLeftLightZ = leftWalls[i].z;
+                    1.0f,
+                    true
+                    });
             }
-
         }
-        
 
-        // RIGHT WALLS
+        //right walls
         for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
         {
-            if (rightWalls[i].hasLight &&
-                abs(rightWalls[i].z - lastRightLightZ) > WALL_LIGHT_SPACING &&
-                activeWallLights < MAX_WALL_LIGHTS)
+            if (rightWalls[i].hasLight)
             {
-                wallLights[activeWallLights++] =
-                {
-                    vec3(rightWallX - 1.0f, 0.0f, rightWalls[i].z),
+                candidates.push_back({
+                    vec3(rightWallX - 0.6f, 0.0f, rightWalls[i].z),
                     vec3(1.0f, 0.7f, 0.3f),
-                    1.0f
-                };
-
-                lastRightLightZ = rightWalls[i].z;
+                    1.0f,
+                    false
+                    });
             }
-
         }
 
+        std::sort(candidates.begin(), candidates.end(),
+            [&](const WallLight& a, const WallLight& b)
+            {
+                float da = abs(a.position.z - cameraPosition.z);
+                float db = abs(b.position.z - cameraPosition.z);
+                return da < db;
+            });
+
+        activeWallLights = 0;
+
+        for (int i = 0;
+            i < candidates.size() && activeWallLights < MAX_WALL_LIGHTS;
+            i++)
+        {
+            wallLights[activeWallLights++] = candidates[i];
+        }
+
+
+        //Drawing torches
+        for (int i = 0; i < activeWallLights; i++)
+        {
+            const WallLight& light = wallLights[i];
+
+            mat4 T = translate(mat4(1.0f), vec3(light.position.x + (light.isLeftWall ? -0.1f : 0.1f), light.position.y, light.position.z));
+
+            // Rotate torch so it faces inward
+            mat4 R;
+            if (light.isLeftWall)
+            {
+                R = rotate(mat4(1.0f),
+                    radians(90.0f),
+                    vec3(0.0f, 1.0f, 0.0f));
+            }
+            else
+            {
+                R = rotate(mat4(1.0f),
+                    radians(-90.0f),
+                    vec3(0.0f, 1.0f, 0.0f));
+            }
+
+            mat4 S = scale(mat4(1.0f), vec3(0.3f));
+
+            mat4 model = T * R * S;
+
+            objectShader.setMat4("model", model);
+            objectShader.setMat4("mvpIn", projection * view * model);
+
+            WallTorch.Draw(objectShader);
+        }
 
         //Drawing Tiles
         for (int lane = 0; lane < NUM_LANES; lane++)
@@ -824,7 +896,48 @@ int main()
             }
         }
 
+        //drawing ground
+        float halfCols = GROUND_COLS * 0.5f;
+        float halfRows = GROUND_ROWS * 0.5f;
+
+        for (int z = 0; z < GROUND_ROWS; z++)
+        {
+            for (int x = 0; x < GROUND_COLS; x++)
+            {
+                Model* groundModel =
+                    (groundType[z][x] == 0) ? &GroundFlat : &GroundHills;
+
+                float worldX = (x - halfCols) * GROUND_TILE_SIZE;
+                float worldZ = cameraPosition.z - ((z - halfRows) * GROUND_TILE_SIZE);
+
+                mat4 T = translate(
+                    mat4(1.0f),
+                    vec3(worldX, GROUND_Y, worldZ)
+                );
+
+                mat4 R = rotate(
+                    mat4(1.0f),
+                    radians(90.0f),
+                    vec3(0.0f, 1.0f, 0.0f)
+                );
+
+                mat4 S = scale(
+                    mat4(1.0f),
+                    vec3(GROUND_TILE_SIZE, 2.0f, GROUND_TILE_SIZE)
+                );
+
+                mat4 model = T * R * S;
+
+                objectShader.setMat4("model", model);
+                objectShader.setMat4("mvpIn", projection * view * model);
+
+                groundModel->Draw(objectShader);
+            }
+        }
+
+
         //Drawing Walls
+        
         for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
         {
             Model* wallModel = nullptr;
@@ -864,8 +977,7 @@ int main()
             objectShader.setMat4("model", model);
             wallModel->Draw(objectShader);
         }
-
-
+        
 
         //Drawing Obstacles
         for (int i = 0; i < activeObstacleCount; i++)
