@@ -17,6 +17,11 @@
 #include <learnopengl/shader_m.h>
 #include <learnopengl/model.h>
 
+//IRRKLANG (Audio)
+#include <irrKlang/irrKlang.h>
+using namespace irrklang;
+
+
 
 //GENERAL
 #include "main.h"
@@ -24,7 +29,7 @@
 
 /*
 
-    Quick not: im very new to OpenGL so i've included a frankly absurd amount of comments,
+    Quick note: im very new to OpenGL so i've included a frankly absurd amount of comments,
     just so i can remember what everything is/does. my apologies now for all the green text
 
 */
@@ -94,6 +99,11 @@ float playerBaseY = 0.0f;
 float playerY = 0.0f;
 float verticalVelocity = 0.0f;
 
+//death
+bool isDead = false;
+float deathTimer = 0.0f;
+const float DEATH_DELAY = 0.15f; 
+
 //states
 bool isGrounded = true;
 bool isCrouching = false;
@@ -109,12 +119,15 @@ float distanceTravelled = 0.0f;
 
 //Difficulty Scaling
 const float baseSpeed = 12.0f;
-const float maxSpeed = 40.0f;
+const float baseMaxSpeed = 40.0f;
+float currentMaxSpeed = baseMaxSpeed;
 
 const float SPEED_INCREASE_PER_METRE = 0.02f;
 
 const int baseObstacles = 2;
-const int maxObstacles = 6;
+const int maxObstacles = 20;
+const int baseMaxObstacles = 6;
+int currentMaxObstacles = baseMaxObstacles;
 
 int activeObstacleCount = baseObstacles;
 
@@ -215,6 +228,17 @@ float groundZ[GROUND_SEGMENTS];
 
 
 #pragma endregion
+
+#pragma region Sound
+ISoundEngine* soundEngine = nullptr;
+
+// Sound handles
+ISound* music = nullptr;
+ISound* ambient = nullptr;
+
+int currentTrack = 0;
+#pragma endregion
+
 
 
 //Helper functions
@@ -390,6 +414,19 @@ void InitGroundBoard()
     }
 }
 
+void PlayDeathSound()
+{
+    if (soundEngine)
+    {
+        soundEngine->play2D(
+            "audio/sfx/death.wav",
+            false,  // no loop
+            false,  // play immediately
+            false   // no need to track it
+        );
+    }
+}
+
 int main()
 {
 #pragma region GLFW
@@ -495,6 +532,16 @@ int main()
 
 #pragma endregion
 
+#pragma region sound setup
+    soundEngine = createIrrKlangDevice();
+    if (!soundEngine)
+    {
+        std::cout << "Failed to create IrrKlang engine\n";
+        return -1;
+    }
+#pragma endregion
+
+
 #pragma region Initial Setup
 
 
@@ -568,9 +615,46 @@ int main()
         RespawnObstacle(i);
     }
 
+    #pragma region sound
+        music = soundEngine->play2D(
+            "audio/music/background.wav",
+            false,   //not looping
+            false,  // start playing immediately
+            true    // return ISound*
+        );
+
+        if (music)
+        {
+            music->setVolume(0.4f);
+        }
+        currentTrack = 0;
+
+        ambient = soundEngine->play2D(
+            "audio/ambient/running.wav",
+            true, //looping
+            false,
+            true
+        );
+
+        if (ambient)
+        {
+            ambient->setVolume(0.25f);
+        }
+    #pragma endregion
+
     //Render loop
     while (glfwWindowShouldClose(window) == false)
     {
+        //Rendering
+        if (isDead)
+        {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // pure black
+        }
+        else
+        {
+            glClearColor(0.25f, 0.0f, 1.0f, 1.0f); // normal background
+        }
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
@@ -579,6 +663,40 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        //music change
+        if (music && music->isFinished())
+        {
+            music->drop();
+            music = nullptr;
+
+            if (currentTrack == 0)
+            {
+                // Start second song
+                music = soundEngine->play2D(
+                    "audio/music/background2.wav",
+                    true,   // loop second song
+                    false,
+                    true
+                );
+
+                if (music)
+                {   
+                    music->setVolume(0.4f);
+                }
+
+                currentTrack = 1;
+
+                //ramp up difficulty on music change
+                currentMaxSpeed += 20.0f;        // faster runner
+                currentMaxObstacles += 4;         // more obstacles
+
+                std::cout << "[DIFFICULTY] Increased! "
+                    << "MaxSpeed=" << currentMaxSpeed
+                    << " MaxObstacles=" << currentMaxObstacles
+                    << std::endl;
+            }
+        }
+     
         //gravity
         verticalVelocity -= gravity * deltaTime;
         playerY += verticalVelocity * deltaTime;
@@ -591,7 +709,9 @@ int main()
         }
 
         // Automatic forward movement 
-        cameraPosition.z -= forwardSpeed * deltaTime;
+        if (!isDead) {
+            cameraPosition.z -= forwardSpeed * deltaTime;
+        }
 
         //toggle crouch
         cameraPosition.y = playerY + (isCrouching ? crouchOffset : 0.0f);
@@ -605,7 +725,7 @@ int main()
 
         // Scale speed with distance
         forwardSpeed = baseSpeed + distanceTravelled * SPEED_INCREASE_PER_METRE;
-        forwardSpeed = glm::clamp(forwardSpeed, baseSpeed, maxSpeed);
+        forwardSpeed = glm::clamp(forwardSpeed, baseSpeed, currentMaxSpeed);
 
         //scale obstacles with distance
         const float DISTANCE_PER_OBSTACLE = 60.0f;
@@ -616,7 +736,7 @@ int main()
         activeObstacleCount = glm::clamp(
             desiredObstacleCount,
             baseObstacles,
-            maxObstacles
+            currentMaxObstacles
         );
 
 
@@ -652,30 +772,73 @@ int main()
             }
 
             if (collision) {
-                // Reset player
-                cameraPosition.z = 0.0f;
-                currentLane = 0;
-                forwardSpeed = baseSpeed;
-                startZ = cameraPosition.z;
-                distanceTravelled = 0.0f;
+                /*
+                if (!isDead)
+                {
+                    isDead = true;
+                    deathTimer = 0.0f;
 
-                //Reset obstacles
-                activeObstacleCount = baseObstacles;
-                RespawnObstacle(i);
+                    PlayDeathSound();
 
-                //Reset world
-                ResetTiles();
-                ResetWalls();
-                //ResetTorches();
+                    // Restart music
+                    currentTrack = 0;
 
+                    if (music)
+                    {
+                        music->stop();
+                        music->drop();   // release old handle
+                        music = nullptr;
+                    }
 
-                std::cout << "Collision!" << std::endl;
+                    music = soundEngine->play2D(
+                        "audio/music/background.wav",
+                        false,   // loop
+                        false,
+                        true
+                    );
+
+                    if (music)
+                        music->setVolume(0.4f);
+
+                    std::cout << "Collision!" << std::endl;
+                }
+                */
             }
         }
         
 
         //Input
         ProcessUserInput(window); //Takes user input
+
+        //Player death
+        if (isDead)
+        {
+            deathTimer += deltaTime;
+
+            if (deathTimer >= DEATH_DELAY)
+            {
+                // Reset game state
+                isDead = false;
+
+                cameraPosition.z = 0.0f;
+                currentLane = 0;
+                forwardSpeed = baseSpeed;
+                currentMaxSpeed = baseMaxSpeed;
+                
+
+                startZ = cameraPosition.z;
+                distanceTravelled = 0.0f;
+
+                ResetTiles();
+                ResetWalls();
+
+                activeObstacleCount = baseObstacles;
+                currentMaxObstacles = baseMaxObstacles;
+                for (int i = 0; i < activeObstacleCount; i++)
+                    RespawnObstacle(i);
+            }
+        }
+        
 
         //UI
         static float titleUpdateTimer = 0.0f;
@@ -689,11 +852,6 @@ int main()
             glfwSetWindowTitle(window, title.c_str());
             titleUpdateTimer = 0.0f;
         }
-
-        //Rendering
-        glClearColor(0.25f, 0.0f, 1.0f, 1.0f); //Colour to display on cleared window
-        glClear(GL_COLOR_BUFFER_BIT); //Clears the colour buffer
-        glClear(GL_DEPTH_BUFFER_BIT); //Clears the depth buffer
 
         glEnable(GL_CULL_FACE); //Discards all back-facing triangles
 
@@ -834,205 +992,214 @@ int main()
             wallLights[activeWallLights++] = candidates[i];
         }
 
-
-        //Drawing torches
-        for (int i = 0; i < activeWallLights; i++)
-        {
-            const WallLight& light = wallLights[i];
-
-            mat4 T = translate(mat4(1.0f), vec3(light.position.x + (light.isLeftWall ? -0.1f : 0.1f), light.position.y, light.position.z));
-
-            // Rotate torch so it faces inward
-            mat4 R;
-            if (light.isLeftWall)
+        if (!isDead) {
+            //Drawing torches
+            for (int i = 0; i < activeWallLights; i++)
             {
-                R = rotate(mat4(1.0f),
-                    radians(90.0f),
-                    vec3(0.0f, 1.0f, 0.0f));
-            }
-            else
-            {
-                R = rotate(mat4(1.0f),
-                    radians(-90.0f),
-                    vec3(0.0f, 1.0f, 0.0f));
-            }
+                const WallLight& light = wallLights[i];
 
-            mat4 S = scale(mat4(1.0f), vec3(0.3f));
+                mat4 T = translate(mat4(1.0f), vec3(light.position.x + (light.isLeftWall ? -0.1f : 0.1f), light.position.y, light.position.z));
 
-            mat4 model = T * R * S;
+                // Rotate torch so it faces inward
+                mat4 R;
+                if (light.isLeftWall)
+                {
+                    R = rotate(mat4(1.0f),
+                        radians(90.0f),
+                        vec3(0.0f, 1.0f, 0.0f));
+                }
+                else
+                {
+                    R = rotate(mat4(1.0f),
+                        radians(-90.0f),
+                        vec3(0.0f, 1.0f, 0.0f));
+                }
 
-            objectShader.setMat4("model", model);
-            objectShader.setMat4("mvpIn", projection * view * model);
-
-            WallTorch.Draw(objectShader);
-        }
-
-        //Drawing Tiles
-        for (int lane = 0; lane < NUM_LANES; lane++)
-        {
-            float laneX = (lane - 1) * laneWidth; // -1, 0, +1
-
-            for (int i = 0; i < TILES_PER_LANE; i++)
-            {
-
-                mat4 tileModel = mat4(1.0f);
-
-                mat4 T = translate(mat4(1.0f), vec3(laneX, -2.5f, tileZ[lane][i]));
-
-                mat4 R = mat4(1.0f);
-
-                 R = rotate(mat4(1.0f), radians(90.0f), vec3(0.0f, 1.0f, 0.0f));
-
-                mat4 S = scale(mat4(1.0f), vec3(tileLength, tileHeight, laneWidth * 0.9f));
-
-                // World-space translation 
-                tileModel = T * R * S;
-
-                mat4 tileMVP = projection * view * tileModel;
-                objectShader.setMat4("mvpIn", tileMVP);
-                objectShader.setMat4("model", tileModel);
-
-                Tile.Draw(objectShader);
-            }
-        }
-
-        //drawing ground
-        float halfCols = GROUND_COLS * 0.5f;
-        float halfRows = GROUND_ROWS * 0.5f;
-
-        for (int z = 0; z < GROUND_ROWS; z++)
-        {
-            for (int x = 0; x < GROUND_COLS; x++)
-            {
-                Model* groundModel =
-                    (groundType[z][x] == 0) ? &GroundFlat : &GroundHills;
-
-                float worldX = (x - halfCols) * GROUND_TILE_SIZE;
-                float worldZ = cameraPosition.z - ((z - halfRows) * GROUND_TILE_SIZE);
-
-                mat4 T = translate(
-                    mat4(1.0f),
-                    vec3(worldX, GROUND_Y, worldZ)
-                );
-
-                mat4 R = rotate(
-                    mat4(1.0f),
-                    radians(90.0f),
-                    vec3(0.0f, 1.0f, 0.0f)
-                );
-
-                mat4 S = scale(
-                    mat4(1.0f),
-                    vec3(GROUND_TILE_SIZE, 2.0f, GROUND_TILE_SIZE)
-                );
+                mat4 S = scale(mat4(1.0f), vec3(0.3f));
 
                 mat4 model = T * R * S;
 
                 objectShader.setMat4("model", model);
                 objectShader.setMat4("mvpIn", projection * view * model);
 
-                groundModel->Draw(objectShader);
+                WallTorch.Draw(objectShader);
             }
-        }
 
-
-        //Drawing Walls
-        
-        for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
-        {
-            Model* wallModel = nullptr;
-
-            // LEFT WALL
-            switch (leftWalls[i].modelIndex)
+            //Drawing Tiles
+            for (int lane = 0; lane < NUM_LANES; lane++)
             {
-            case 0: wallModel = &WallA; break;
-            case 1: wallModel = &WallB; break;
-            case 2: wallModel = &WallC; break;
+                float laneX = (lane - 1) * laneWidth; // -1, 0, +1
+
+                for (int i = 0; i < TILES_PER_LANE; i++)
+                {
+
+                    mat4 tileModel = mat4(1.0f);
+
+                    mat4 T = translate(mat4(1.0f), vec3(laneX, -2.5f, tileZ[lane][i]));
+
+                    mat4 R = mat4(1.0f);
+
+                    R = rotate(mat4(1.0f), radians(90.0f), vec3(0.0f, 1.0f, 0.0f));
+
+                    mat4 S = scale(mat4(1.0f), vec3(tileLength, tileHeight, laneWidth * 0.9f));
+
+                    // World-space translation 
+                    tileModel = T * R * S;
+
+                    mat4 tileMVP = projection * view * tileModel;
+                    objectShader.setMat4("mvpIn", tileMVP);
+                    objectShader.setMat4("model", tileModel);
+
+                    Tile.Draw(objectShader);
+                }
             }
 
-            mat4 T = translate(mat4(1.0f),
-                vec3(leftWallX, -wallHeight * 0.6f, leftWalls[i].z));
-            mat4 S = scale(mat4(1.0f),
-                vec3(1.0f, wallHeight, wallSegmentLength));
+            //drawing ground
+            float halfCols = GROUND_COLS * 0.5f;
+            float halfRows = GROUND_ROWS * 0.5f;
 
-            mat4 model = T * S;
-            objectShader.setMat4("mvpIn", projection * view * model);
-            objectShader.setMat4("model", model);
-            wallModel->Draw(objectShader);
-
-            // RIGHT WALL 
-            switch (rightWalls[i].modelIndex)
+            for (int z = 0; z < GROUND_ROWS; z++)
             {
-            case 0: wallModel = &WallA; break;
-            case 1: wallModel = &WallB; break;
-            case 2: wallModel = &WallC; break;
+                for (int x = 0; x < GROUND_COLS; x++)
+                {
+                    Model* groundModel =
+                        (groundType[z][x] == 0) ? &GroundFlat : &GroundHills;
+
+                    float worldX = (x - halfCols) * GROUND_TILE_SIZE;
+                    float worldZ = cameraPosition.z - ((z - halfRows) * GROUND_TILE_SIZE);
+
+                    mat4 T = translate(
+                        mat4(1.0f),
+                        vec3(worldX, GROUND_Y, worldZ)
+                    );
+
+                    mat4 R = rotate(
+                        mat4(1.0f),
+                        radians(90.0f),
+                        vec3(0.0f, 1.0f, 0.0f)
+                    );
+
+                    mat4 S = scale(
+                        mat4(1.0f),
+                        vec3(GROUND_TILE_SIZE, 2.0f, GROUND_TILE_SIZE)
+                    );
+
+                    mat4 model = T * R * S;
+
+                    objectShader.setMat4("model", model);
+                    objectShader.setMat4("mvpIn", projection * view * model);
+
+                    groundModel->Draw(objectShader);
+                }
             }
 
-            T = translate(mat4(1.0f),
-                vec3(rightWallX, -wallHeight * 0.6f, rightWalls[i].z));
-            mat4 R = mat4(1.0f);
-            R = rotate(mat4(1.0f), radians(180.0f), vec3(0.0f, 1.0f, 0.0f));
-            model = T * R * S;
-            objectShader.setMat4("mvpIn", projection * view * model);
-            objectShader.setMat4("model", model);
-            wallModel->Draw(objectShader);
-        }
-        
 
-        //Drawing Obstacles
-        for (int i = 0; i < activeObstacleCount; i++)
-        {
-            Model* obstacleModel = nullptr;
+            //Drawing Walls
 
-            switch (obstacles[i].modelIndex)
+            for (int i = 0; i < TILES_PER_LANE * WALL_SEGMENTS_PER_TILE; i++)
             {
-            case 0: obstacleModel = &ObstacleA; break;
-            case 1: obstacleModel = &ObstacleB; break;
-            case 2: obstacleModel = &ObstacleC; break;
-            case 3: obstacleModel = &ObstacleD; break;
+                Model* wallModel = nullptr;
+
+                // LEFT WALL
+                switch (leftWalls[i].modelIndex)
+                {
+                case 0: wallModel = &WallA; break;
+                case 1: wallModel = &WallB; break;
+                case 2: wallModel = &WallC; break;
+                }
+
+                mat4 T = translate(mat4(1.0f),
+                    vec3(leftWallX, -wallHeight * 0.6f, leftWalls[i].z));
+                mat4 S = scale(mat4(1.0f),
+                    vec3(1.0f, wallHeight, wallSegmentLength));
+
+                mat4 model = T * S;
+                objectShader.setMat4("mvpIn", projection * view * model);
+                objectShader.setMat4("model", model);
+                wallModel->Draw(objectShader);
+
+                // RIGHT WALL 
+                switch (rightWalls[i].modelIndex)
+                {
+                case 0: wallModel = &WallA; break;
+                case 1: wallModel = &WallB; break;
+                case 2: wallModel = &WallC; break;
+                }
+
+                T = translate(mat4(1.0f),
+                    vec3(rightWallX, -wallHeight * 0.6f, rightWalls[i].z));
+                mat4 R = mat4(1.0f);
+                R = rotate(mat4(1.0f), radians(180.0f), vec3(0.0f, 1.0f, 0.0f));
+                model = T * R * S;
+                objectShader.setMat4("mvpIn", projection * view * model);
+                objectShader.setMat4("model", model);
+                wallModel->Draw(objectShader);
             }
 
-            mat4 T = translate(mat4(1.0f), obstacles[i].position);
-            mat4 R = rotate(mat4(1.0f),
-                radians(obstacles[i].rotationAngle),
-                obstacles[i].rotationAxis);
-            mat4 S = scale(mat4(1.0f), obstacles[i].scale);
-            mat4 model = T * R * S;
 
-            objectShader.setMat4("mvpIn", projection * view * model);
-            objectShader.setMat4("model", model);
-            obstacleModel->Draw(objectShader);
+            //Drawing Obstacles
+            for (int i = 0; i < activeObstacleCount; i++)
+            {
+                Model* obstacleModel = nullptr;
+
+                switch (obstacles[i].modelIndex)
+                {
+                case 0: obstacleModel = &ObstacleA; break;
+                case 1: obstacleModel = &ObstacleB; break;
+                case 2: obstacleModel = &ObstacleC; break;
+                case 3: obstacleModel = &ObstacleD; break;
+                }
+
+                mat4 T = translate(mat4(1.0f), obstacles[i].position);
+                mat4 R = rotate(mat4(1.0f),
+                    radians(obstacles[i].rotationAngle),
+                    obstacles[i].rotationAxis);
+                mat4 S = scale(mat4(1.0f), obstacles[i].scale);
+                mat4 model = T * R * S;
+
+                objectShader.setMat4("mvpIn", projection * view * model);
+                objectShader.setMat4("model", model);
+                obstacleModel->Draw(objectShader);
+            }
+
+
+            //Drawing Skybox
+            glDepthFunc(GL_LEQUAL);
+            glDepthMask(GL_FALSE);
+            glDisable(GL_CULL_FACE);
+
+            skyboxShader.use();
+
+            // Remove translation from view matrix
+            mat4 skyView = mat4(mat3(view));
+            skyboxShader.setMat4("view", skyView);
+            skyboxShader.setMat4("projection", projection);
+
+            glBindVertexArray(skyboxVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            glBindVertexArray(0);
+            glActiveTexture(GL_TEXTURE0);
+
+            glDepthMask(GL_TRUE);
+            glDepthFunc(GL_LESS);
+            glEnable(GL_CULL_FACE);
         }
-
-
-        //Drawing Skybox
-        glDepthFunc(GL_LEQUAL);
-        glDepthMask(GL_FALSE);    
-        glDisable(GL_CULL_FACE);
-
-        skyboxShader.use();
-
-        // Remove translation from view matrix
-        mat4 skyView = mat4(mat3(view));
-        skyboxShader.setMat4("view", skyView);
-        skyboxShader.setMat4("projection", projection);
-
-        glBindVertexArray(skyboxVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-        glBindVertexArray(0);
-        glActiveTexture(GL_TEXTURE0);
-
-        glDepthMask(GL_TRUE);
-        glDepthFunc(GL_LESS);
-        glEnable(GL_CULL_FACE);
 
         //Refreshing
         glfwSwapBuffers(window); //Swaps the colour buffer
         glfwPollEvents(); //Queries all GLFW events
+    }
+
+    if (music) music->drop();
+    if (ambient) ambient->drop();
+
+    if (soundEngine)
+    {
+        soundEngine->drop();
     }
 
     //Safely terminates GLFW
@@ -1094,6 +1261,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 void ProcessUserInput(GLFWwindow* WindowIn)
 {
+    if (isDead)
+        return;
+
     //Closes window on 'exit' key press
     if (glfwGetKey(WindowIn, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
@@ -1112,31 +1282,30 @@ void ProcessUserInput(GLFWwindow* WindowIn)
 
 
     //WASD controls
+        if (wPressed && !wPressedLastFrame && isGrounded)
+        {
+            verticalVelocity = jumpForce;
+            isGrounded = false;
+        }
 
-    if (wPressed && !wPressedLastFrame && isGrounded)
-    {
-        verticalVelocity = jumpForce;
-        isGrounded = false;
-    }
-   
-    if (glfwGetKey(WindowIn, GLFW_KEY_S) == GLFW_PRESS)
-    {
-        isCrouching = true;
-    }
-    else {
-        isCrouching = false;
-    }
+        if (glfwGetKey(WindowIn, GLFW_KEY_S) == GLFW_PRESS)
+        {
+            isCrouching = true;
+        }
+        else {
+            isCrouching = false;
+        }
 
 
-    if (aPressed && !aPressedLastFrame && currentLane > -1)
-    {
-        currentLane--;
-    }
+        if (aPressed && !aPressedLastFrame && currentLane > -1)
+        {
+            currentLane--;
+        }
 
-    if (dPressed && !dPressedLastFrame && currentLane < 1)
-    {
-        currentLane++;
-    }
+        if (dPressed && !dPressedLastFrame && currentLane < 1)
+        {
+            currentLane++;
+        }
 
     wPressedLastFrame = wPressed;
     aPressedLastFrame = aPressed;
