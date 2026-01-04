@@ -540,7 +540,6 @@ int main()
     }
 #pragma endregion
 
-
 #pragma region Initial Setup
 
 
@@ -696,6 +695,10 @@ int main()
             }
         }
      
+#pragma region Player loop
+
+
+
         //gravity
         verticalVelocity -= gravity * deltaTime;
         playerY += verticalVelocity * deltaTime;
@@ -718,6 +721,11 @@ int main()
         // Snap camera X position to current lane
         cameraPosition.x = currentLane * laneWidth;
 
+#pragma endregion
+
+#pragma region difficulty scaling
+
+
 
         //track distance travvelled
         distanceTravelled = startZ - cameraPosition.z;
@@ -737,6 +745,8 @@ int main()
             baseObstacles,
             currentMaxObstacles
         );
+
+#pragma endregion
 
 
         // Collision check
@@ -884,6 +894,10 @@ int main()
             objectShader.setFloat(base + ".intensity", wallLights[i].intensity);
         }
         
+#pragma region Object Recycling
+
+
+
 
         //Recycle obstacle positions individually
         for (int i = 0; i < activeObstacleCount; i++)
@@ -992,6 +1006,10 @@ int main()
         {
             wallLights[activeWallLights++] = candidates[i];
         }
+
+#pragma endregion
+
+#pragma region Drawing
 
         if (!isDead) {
             //Drawing torches
@@ -1189,12 +1207,14 @@ int main()
             glDepthFunc(GL_LESS);
             glEnable(GL_CULL_FACE);
         }
+#pragma endregion
 
         //Refreshing
         glfwSwapBuffers(window); //Swaps the colour buffer
         glfwPollEvents(); //Queries all GLFW events
     }
 
+    //Drop sounds to prevent memory leaks
     if (music) music->drop();
     if (ambient) ambient->drop();
 
