@@ -116,6 +116,7 @@ const float crouchOffset = -0.6f;
 //Distance tracking
 float startZ = 0.0f;
 float distanceTravelled = 0.0f;
+float deathDistance = 0.0f;
 
 //Difficulty Scaling
 const float baseSpeed = 12.0f;
@@ -772,11 +773,13 @@ int main()
             }
 
             if (collision) {
-                /*
+                
                 if (!isDead)
                 {
                     isDead = true;
                     deathTimer = 0.0f;
+
+                    deathDistance = distanceTravelled;
 
                     PlayDeathSound();
 
@@ -802,7 +805,7 @@ int main()
 
                     std::cout << "Collision!" << std::endl;
                 }
-                */
+                
             }
         }
         
