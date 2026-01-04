@@ -1,0 +1,11 @@
+# Created with Anim8or 1.00
+# Object "Rock07-Base":
+
+newmtl Rock_07_Base
+Ka 0.098 0.098 0.098
+Kd 0.62 0.62 0.62
+Ks 0.71 0.71 0.71
+Ns 150.5
+map_Kd Rock07-Base-Diffuse.png
+map_Ks Rock07-Base-Specular.png
+

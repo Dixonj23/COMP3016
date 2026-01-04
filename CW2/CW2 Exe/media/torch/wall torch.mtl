@@ -1,0 +1,12 @@
+# Blender 4.5.2 LTS MTL File: 'None'
+# www.blender.org
+
+newmtl Material.005
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd sword RR.png
+map_Ke Wall_Torch_Lantern_Post_Emit_Texture.png
