@@ -140,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="fragmentShader.frag" />
+    <None Include="README.md" />
     <None Include="skybox.frag" />
     <None Include="skybox.vert" />
     <None Include="vertexShader.vert" />

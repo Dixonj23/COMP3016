@@ -55,5 +55,6 @@
     <None Include="skybox.frag">
       <Filter>shaders</Filter>
     </None>
+    <None Include="README.md" />
   </ItemGroup>
 </Project>
