@@ -21,8 +21,6 @@
 #include <irrKlang/irrKlang.h>
 using namespace irrklang;
 
-
-
 //GENERAL
 #include "main.h"
 #include <ctime>
