@@ -18,7 +18,7 @@
 #include <learnopengl/model.h>
 
 //IRRKLANG (Audio)
-#include <irrKlang/irrKlang.h>
+#include <irrklang/irrKlang.h>
 using namespace irrklang;
 
 //GENERAL
