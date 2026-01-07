@@ -7,7 +7,6 @@ out/
 Debug/
 Release/
 x64/
-*.exe
 *.pdb
 *.ilk
 *.exp
