@@ -8,8 +8,6 @@ Debug/
 Release/
 x64/
 *.exe
-*.dll
-*.lib
 *.pdb
 *.ilk
 *.exp
